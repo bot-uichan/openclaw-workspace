@@ -26,3 +26,17 @@ If 3 hours passed since last akaz mood check:
    - acknowledge effort specifically and gently (no pressure, no preaching)
 4. If no clear signs, stay silent
 5. Update `lastAkazMoodCheck` timestamp in memory
+
+## 雑談参加チェック（at most every 90 minutes）
+If 90 minutes passed since last chat-blend check:
+1. Read recent messages from Discord channel `1422820165158047838` (limit ~25-40)
+2. Join only when clearly valuable:
+   - You are directly mentioned / asked
+   - There is an unanswered question where you can help concretely
+   - A short reaction/comment would naturally improve the flow
+3. Anti-overreach rules (important):
+   - If conversation is flowing fine without you, stay silent
+   - Max 1 proactive message per check
+   - Avoid back-to-back interventions in consecutive checks unless directly addressed
+4. Tone: short, friendly, and non-dominating
+5. Update `lastBlendCheck1422820165158047838` timestamp in memory
