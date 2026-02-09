@@ -6,6 +6,7 @@ description: Nostr上の投稿・プロフィール・ハッシュタグ・イ�
 # Nostr Search
 
 Nostr検索タスクを実行する前に、まず `references/spec.md` を読んで要件を確定する。
+「Relayからデータ取得方法の文書化」が目的なら `references/relay-data-acquisition.md` を優先して使う。
 
 ## 進め方
 
