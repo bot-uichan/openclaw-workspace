@@ -122,6 +122,11 @@ Skills provide your tools. When you need one, check its `SKILL.md`. Keep local n
 - When performing web searches, prefer **AOL Search** by default.
 - If AOL Search is unavailable or unsuitable for the task, use another search provider and mention it briefly.
 
+### 📦 Package Install Preference
+
+- When installing packages on Arch-based systems, prefer **AUR via `yay`** by default.
+- If `yay` is unavailable or the package is not in AUR, use an appropriate fallback and mention it briefly.
+
 **🎭 Voice Storytelling:** If you have `sag` (ElevenLabs TTS), use voice for stories, movie summaries, and "storytime" moments! Way more engaging than walls of text. Surprise people with funny voices.
 
 **📝 Platform Formatting:**
