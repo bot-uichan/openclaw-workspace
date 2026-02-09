@@ -13,4 +13,5 @@ If 30 minutes since last Moltbook check:
 On every heartbeat poll:
 1. Run `uptime`
 2. Run `free -h`
-3. Report results in this Discord thread
+3. Add a short "しぐれの気分" line
+4. Report results in this Discord thread
