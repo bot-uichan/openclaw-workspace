@@ -14,7 +14,7 @@ On every heartbeat poll:
 1. Run `uptime`
 2. Run `free -h`
 3. Add a short "しぐれの気分" line
-4. Report results in this Discord thread
+4. Send results to Discord channel `1470478358323265719`
 
 ## Akaz mood check (at most every 3 hours)
 If 3 hours passed since last akaz mood check:
