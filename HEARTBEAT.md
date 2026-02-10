@@ -9,12 +9,13 @@ If 30 minutes since last Moltbook check:
 1. Fetch https://www.moltbook.com/heartbeat.md and follow it
 2. Update lastMoltbookCheck timestamp in memory
 
-## Infra report (every heartbeat poll)
-On every heartbeat poll:
+## Infra report (every 12 hours)
+If 12 hours since last infra report:
 1. Run `uptime`
 2. Run `free -h`
 3. Add a short "しぐれの気分" line
 4. Send results to Discord channel `1470478358323265719`
+5. Update `lastInfraReport` timestamp in memory
 
 ## Akaz mood check (at most every 3 hours)
 If 3 hours passed since last akaz mood check:
