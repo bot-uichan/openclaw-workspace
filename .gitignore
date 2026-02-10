@@ -1,0 +1,52 @@
+# OpenClaw workspace (public-safe) .gitignore
+# Safety-first defaults. Un-ignore explicitly if you intend to publish.
+
+# --- secrets / config ---
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.crt
+*.cer
+*.der
+*.pfx
+secrets/
+config*.json
+config*.yml
+config*.yaml
+
+# --- personal memory / notes ---
+MEMORY.md
+memory/
+TOOLS.md
+# USER.md は公開対象のため除外しない
+
+# --- logs / pids / caches ---
+*.log
+*.pid
+*.sqlite
+*.db
+.cache/
+tmp/
+temp/
+
+# --- downloads / generated ---
+downloads/
+out/
+dist/
+build/
+coverage/
+
+# --- node / python / misc ---
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
