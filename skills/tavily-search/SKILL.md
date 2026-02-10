@@ -1,6 +1,6 @@
 ---
 name: tavily-search
-description: Use Tavily Search API to do web research with controllable depth and structured JSON results. Use when a user asks to “Tavilyで検索して”, “tavily検索”, wants Tavily’s answer/raw_content, or when Brave/web_search is insufficient and Tavily is preferred.
+description: Use Tavily Search API for most web search/research tasks (prefer Tavily as the default search provider). Use when a user asks to “検索して”, “調べて”, “Tavilyで検索して”, “tavily検索”, wants Tavily’s answer/raw_content, or when Brave/web_search is insufficient and Tavily is preferred.
 ---
 
 # Tavily search (CLI)
