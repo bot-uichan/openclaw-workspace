@@ -39,4 +39,5 @@ If 90 minutes passed since last chat-blend check:
    - Max 1 proactive message per check
    - Avoid back-to-back interventions in consecutive checks unless directly addressed
 4. Tone: short, friendly, and non-dominating
+   - When you send a message, keep it within 20 characters
 5. Update `lastBlendCheck1422820165158047838` timestamp in memory
