@@ -37,10 +37,18 @@ If 90 minutes passed since last chat-blend check:
 
 ## Demo crypto trade (every 30 minutes)
 If 30 minutes passed since last demo trade tick:
-1. Run `node scripts/demo-trade.js`
-2. Read the latest line from `memory/demo-trade-log.jsonl`
-3. Post an update to Discord channel `1476106170094714962` only when:
-   - a trade happened (BUY/SELL), or
-   - total value changed by >= 3% from the initial 1000 USDC
-4. Keep the update short (<= 20 chars preferred)
-5. Update `lastDemoTradeTick` timestamp in `memory/heartbeat-state.json`
+1. Market research is mandatory before deciding:
+   - Run Tavily search (required), for example:
+     - `node skills/tavily-search/scripts/tavily-search.mjs "BTC ETH SOL market news last 24 hours" --max 5 --depth basic --answer`
+   - Use Chromium/browser (required) to check live chart/market screen before decision.
+2. Make a discretionary decision (no fixed buy/sell rule): HOLD / BUY / SELL / SELL_ALL.
+3. Execute trade with **required reason** log:
+   - HOLD: `node scripts/demo-trade.js --action HOLD --reason "今回の判断理由"`
+   - BUY: `node scripts/demo-trade.js --action BUY --symbol SOLUSDC --pct 30 --reason "今回の判断理由"`
+   - SELL: `node scripts/demo-trade.js --action SELL --symbol SOLUSDC --pct 50 --reason "今回の判断理由"`
+4. Read latest line from `memory/demo-trade-log.jsonl` and ensure `decision.reason` is present.
+5. Post update to Discord channel `1476106170094714962` when:
+   - trade happened (BUY/SELL), or
+   - total value changed by >= 3% from initial 1000 USDC
+6. Keep the update short (<= 20 chars preferred)
+7. Update `lastDemoTradeTick` timestamp in `memory/heartbeat-state.json`

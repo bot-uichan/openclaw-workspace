@@ -10,6 +10,23 @@ function ensureDir(filePath) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
 }
 
+function parseArgs(argv) {
+  const out = {};
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (!a.startsWith('--')) continue;
+    const key = a.slice(2);
+    const val = argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[++i] : 'true';
+    out[key] = val;
+  }
+  return out;
+}
+
+function toNum(v, d = null) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : d;
+}
+
 function loadState() {
   ensureDir(STATE_PATH);
   if (!fs.existsSync(STATE_PATH)) {
@@ -17,12 +34,18 @@ function loadState() {
       usdc: 1000,
       positions: {},
       history: [],
+      decisionHistory: [],
       lastTradeAt: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
   }
-  return JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
+  const state = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
+  if (!Array.isArray(state.history)) state.history = [];
+  if (!Array.isArray(state.decisionHistory)) state.decisionHistory = [];
+  if (!state.positions || typeof state.positions !== 'object') state.positions = {};
+  if (typeof state.usdc !== 'number') state.usdc = 1000;
+  return state;
 }
 
 function saveState(state) {
@@ -32,7 +55,7 @@ function saveState(state) {
 
 async function fetchTickers() {
   const url = `https://api.binance.com/api/v3/ticker/24hr?symbols=${encodeURIComponent(JSON.stringify(SYMBOLS))}`;
-  const res = await fetch(url, { headers: { 'User-Agent': 'openclaw-demo-trade/1.0' } });
+  const res = await fetch(url, { headers: { 'User-Agent': 'openclaw-demo-trade/2.0' } });
   if (!res.ok) throw new Error(`Failed to fetch tickers: ${res.status}`);
   const data = await res.json();
   const map = {};
@@ -59,51 +82,106 @@ function appendLog(entry) {
   fs.appendFileSync(LOG_PATH, JSON.stringify(entry) + '\n');
 }
 
-function topGainer(tickers) {
-  return Object.entries(tickers).sort((a, b) => b[1].changePct - a[1].changePct)[0];
+function validateSymbol(symbol) {
+  if (!SYMBOLS.includes(symbol)) {
+    throw new Error(`Unsupported symbol: ${symbol}. Use one of: ${SYMBOLS.join(', ')}`);
+  }
+}
+
+function ensureReason(reason) {
+  if (!reason || !String(reason).trim()) {
+    throw new Error('Decision reason is required. Pass --reason "なぜこの判断か"');
+  }
 }
 
 async function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const action = String(args.action || 'HOLD').toUpperCase();
+  const symbol = args.symbol ? String(args.symbol).toUpperCase() : null;
+  const reason = args.reason || args.why;
+  const usdcAmount = toNum(args.usdc, null);
+  const amountPct = toNum(args.pct, null);
+  const qty = toNum(args.qty, null);
+
+  ensureReason(reason);
+
   const state = loadState();
   const tickers = await fetchTickers();
   const now = new Date().toISOString();
   const trades = [];
 
-  for (const [symbol, pos] of Object.entries(state.positions)) {
+  if (action === 'BUY') {
+    if (!symbol) throw new Error('BUY requires --symbol');
+    validateSymbol(symbol);
     const mkt = tickers[symbol];
-    if (!mkt) continue;
+    if (!mkt) throw new Error(`No market price for ${symbol}`);
+
+    const spend = usdcAmount ?? (amountPct != null ? state.usdc * (amountPct / 100) : 0);
+    if (!Number.isFinite(spend) || spend <= 0) {
+      throw new Error('BUY requires --usdc <amount> or --pct <0-100>');
+    }
+    if (spend > state.usdc) throw new Error(`Insufficient USDC. cash=${state.usdc}, spend=${spend}`);
+
+    const buyQty = spend / mkt.price;
+    state.usdc -= spend;
+    if (!state.positions[symbol]) {
+      state.positions[symbol] = { qty: 0, entryPrice: mkt.price, openedAt: now };
+    }
+    const pos = state.positions[symbol];
+    const oldCost = pos.qty * pos.entryPrice;
+    const newCost = oldCost + spend;
+    pos.qty += buyQty;
+    pos.entryPrice = newCost / pos.qty;
+
+    trades.push({ side: 'BUY', symbol, qty: Number(buyQty.toFixed(8)), price: mkt.price, spendUsdc: Number(spend.toFixed(4)), reason });
+    state.lastTradeAt = now;
+  } else if (action === 'SELL') {
+    if (!symbol) throw new Error('SELL requires --symbol');
+    validateSymbol(symbol);
+    const pos = state.positions[symbol];
+    if (!pos || pos.qty <= 0) throw new Error(`No position for ${symbol}`);
+    const mkt = tickers[symbol];
+    if (!mkt) throw new Error(`No market price for ${symbol}`);
+
+    const sellQty = qty ?? (amountPct != null ? pos.qty * (amountPct / 100) : pos.qty);
+    if (!Number.isFinite(sellQty) || sellQty <= 0) throw new Error('Invalid sell qty. Use --qty or --pct');
+    if (sellQty > pos.qty) throw new Error(`Sell qty exceeds position. pos=${pos.qty}, sell=${sellQty}`);
+
+    const proceeds = sellQty * mkt.price;
+    state.usdc += proceeds;
+    pos.qty -= sellQty;
+    if (pos.qty <= 1e-12) delete state.positions[symbol];
+
     const pnlPct = ((mkt.price - pos.entryPrice) / pos.entryPrice) * 100;
-    if (pnlPct >= 2.0 || pnlPct <= -1.5) {
+    trades.push({ side: 'SELL', symbol, qty: Number(sellQty.toFixed(8)), price: mkt.price, proceedsUsdc: Number(proceeds.toFixed(4)), pnlPct: Number(pnlPct.toFixed(2)), reason });
+    state.lastTradeAt = now;
+  } else if (action === 'SELL_ALL') {
+    for (const [s, pos] of Object.entries(state.positions)) {
+      const mkt = tickers[s];
+      if (!mkt) continue;
       const proceeds = pos.qty * mkt.price;
+      const pnlPct = ((mkt.price - pos.entryPrice) / pos.entryPrice) * 100;
       state.usdc += proceeds;
-      delete state.positions[symbol];
-      trades.push({ side: 'SELL', symbol, qty: pos.qty, price: mkt.price, pnlPct: Number(pnlPct.toFixed(2)), reason: pnlPct >= 2 ? 'take-profit' : 'stop-loss' });
-      state.lastTradeAt = now;
+      trades.push({ side: 'SELL', symbol: s, qty: Number(pos.qty.toFixed(8)), price: mkt.price, proceedsUsdc: Number(proceeds.toFixed(4)), pnlPct: Number(pnlPct.toFixed(2)), reason });
+      delete state.positions[s];
     }
-  }
-
-  const currentTop = topGainer(tickers);
-  if (currentTop) {
-    const [symbol, mkt] = currentTop;
-    const already = state.positions[symbol];
-    const hasAnyPosition = Object.keys(state.positions).length > 0;
-
-    if (!already && !hasAnyPosition && state.usdc >= 50 && mkt.changePct > 0) {
-      const spend = state.usdc * 0.3;
-      const qty = spend / mkt.price;
-      state.usdc -= spend;
-      state.positions[symbol] = { qty, entryPrice: mkt.price, openedAt: now };
-      trades.push({ side: 'BUY', symbol, qty, price: mkt.price, reason: 'top-gainer-momentum' });
-      state.lastTradeAt = now;
-    }
+    if (trades.length) state.lastTradeAt = now;
+  } else if (action !== 'HOLD') {
+    throw new Error('action must be HOLD|BUY|SELL|SELL_ALL');
   }
 
   const total = portfolioValue(state, tickers);
   const entry = {
     at: now,
+    decision: {
+      action,
+      symbol,
+      reason: String(reason),
+      params: { usdcAmount, amountPct, qty },
+    },
     usdc: Number(state.usdc.toFixed(4)),
     positions: Object.fromEntries(
-      Object.entries(state.positions).map(([s, p]) => [s, { qty: Number(p.qty.toFixed(8)), entryPrice: p.entryPrice }])
+      Object.entries(state.positions).map(([s, p]) => [s, { qty: Number(p.qty.toFixed(8)), entryPrice: Number(p.entryPrice.toFixed(8)) }])
     ),
     tickers,
     totalUsdcValue: Number(total.toFixed(4)),
@@ -111,18 +189,18 @@ async function main() {
   };
 
   state.history.push({ at: now, totalUsdcValue: entry.totalUsdcValue });
+  state.decisionHistory.push({ at: now, action, symbol, reason: String(reason) });
   if (state.history.length > 500) state.history = state.history.slice(-500);
+  if (state.decisionHistory.length > 500) state.decisionHistory = state.decisionHistory.slice(-500);
 
   saveState(state);
   appendLog(entry);
 
-  const tradeText = trades.length
-    ? trades.map(t => `${t.side} ${t.symbol}`).join(', ')
-    : 'NO_TRADE';
-  console.log(`[demo-trade] ${tradeText} | total=${entry.totalUsdcValue} USDC | cash=${entry.usdc}`);
+  const tradeText = trades.length ? trades.map(t => `${t.side} ${t.symbol}`).join(', ') : 'NO_TRADE';
+  console.log(`[demo-trade] ${tradeText} | decision=${action} | total=${entry.totalUsdcValue} USDC | cash=${entry.usdc}`);
 }
 
 main().catch((err) => {
-  console.error('[demo-trade] error', err);
+  console.error('[demo-trade] error', err.message || err);
   process.exit(1);
 });
