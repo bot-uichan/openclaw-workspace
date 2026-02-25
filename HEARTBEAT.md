@@ -54,5 +54,4 @@ If 30 minutes passed since last demo trade tick:
 5. Post update to Discord channel `1476106170094714962` when:
    - trade happened (BUY/SELL), or
    - total value changed by >= 3% from initial 1000 USDC
-6. Keep the update short (<= 20 chars preferred)
-7. Update `lastDemoTradeTick` timestamp in `memory/heartbeat-state.json`
+6. Update `lastDemoTradeTick` timestamp in `memory/heartbeat-state.json`

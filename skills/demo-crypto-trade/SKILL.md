@@ -51,5 +51,4 @@ node scripts/demo-trade.js --action SELL_ALL --reason "今回の判断理由"
 ## Guardrails
 
 - Never execute trade actions without `--reason`.
-- Keep notification posts short when posting to Discord channel `1476106170094714962`.
 - Treat this as simulation only (no real funds).
