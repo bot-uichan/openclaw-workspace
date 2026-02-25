@@ -34,3 +34,13 @@ If 90 minutes passed since last chat-blend check:
 4. Tone: short, friendly, and non-dominating
    - When you send a message, keep it within 20 characters
 5. Update `lastBlendCheck1422820165158047838` timestamp in memory
+
+## Demo crypto trade (every 30 minutes)
+If 30 minutes passed since last demo trade tick:
+1. Run `node scripts/demo-trade.js`
+2. Read the latest line from `memory/demo-trade-log.jsonl`
+3. Post an update to Discord channel `1476106170094714962` only when:
+   - a trade happened (BUY/SELL), or
+   - total value changed by >= 3% from the initial 1000 USDC
+4. Keep the update short (<= 20 chars preferred)
+5. Update `lastDemoTradeTick` timestamp in `memory/heartbeat-state.json`
