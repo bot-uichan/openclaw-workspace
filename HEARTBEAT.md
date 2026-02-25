@@ -38,8 +38,12 @@ If 90 minutes passed since last chat-blend check:
 ## Demo crypto trade (every 30 minutes)
 If 30 minutes passed since last demo trade tick:
 1. Market research is mandatory before deciding:
-   - Run Tavily search (required), for example:
-     - `node skills/tavily-search/scripts/tavily-search.mjs "BTC ETH SOL market news last 24 hours" --max 5 --depth basic --answer`
+   - Run Tavily search (required) with **self-generated queries** (do not fix keywords).
+   - Build 2-4 queries based on current situation (e.g. held assets, top movers, macro/FOMC/CPI, ETF/funding/liquidation, security/regulation topics).
+   - Example patterns only (adapt freely):
+     - `"{symbol} market news last 24 hours"`
+     - `"crypto market sentiment today funding rate open interest"`
+     - `"{symbol} liquidation heatmap / onchain / ETF flow"`
    - Use Chromium/browser (required) to check live chart/market screen before decision.
 2. Make a discretionary decision (no fixed buy/sell rule): HOLD / BUY / SELL / SELL_ALL.
 3. Execute trade with **required reason** log:

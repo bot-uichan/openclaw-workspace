@@ -9,10 +9,16 @@ Use this skill to run the workspace's paper-trading flow.
 
 ## Required flow per tick
 
-1. Run Tavily search (mandatory):
+1. Run Tavily search (mandatory) with adaptive queries:
+
+- Create 2-4 queries per tick based on current context (held assets, leaders/laggards, macro events, derivatives metrics, policy/security issues).
+- Do not keep a fixed keyword set.
+- Query examples (adapt each tick):
 
 ```bash
-node skills/tavily-search/scripts/tavily-search.mjs "BTC ETH SOL market news last 24 hours" --max 5 --depth basic --answer
+node skills/tavily-search/scripts/tavily-search.mjs "SOL market news last 24 hours" --max 5 --depth basic --answer
+node skills/tavily-search/scripts/tavily-search.mjs "crypto market sentiment today funding rate open interest" --max 5 --depth basic --answer
+node skills/tavily-search/scripts/tavily-search.mjs "BTC ETF flow today impact" --max 5 --depth basic --answer
 ```
 
 2. Check live market screen in Chromium/browser (mandatory).
