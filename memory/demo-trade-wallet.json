@@ -151,11 +151,15 @@
     {
       "at": "2026-02-26T11:11:25.578Z",
       "totalUsdcValue": 1020.5354
+    },
+    {
+      "at": "2026-02-26T12:11:28.797Z",
+      "totalUsdcValue": 1019.3619
     }
   ],
   "lastTradeAt": "2026-02-25T06:39:32.835Z",
   "createdAt": "2026-02-25T06:39:32.605Z",
-  "updatedAt": "2026-02-26T11:11:25.656Z",
+  "updatedAt": "2026-02-26T12:11:28.845Z",
   "decisionHistory": [
     {
       "at": "2026-02-25T06:47:10.987Z",
@@ -366,6 +370,12 @@
       "action": "HOLD",
       "symbol": null,
       "reason": "SOLはデリバティブ過熱と規制/セキュリティ見出しが混在しノイズ大。優位性が薄く、browser snapshot不可で確認精度も不足のためHOLD。"
+    },
+    {
+      "at": "2026-02-26T12:11:28.797Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLは先物主導でノイズが強く、ETFフローも方向感弱め。Akaz moodは明確な不調サインなし。ブラウザsnapshot不可で裁量精度不足のためHOLD。"
     }
   ]
 }
