@@ -155,11 +155,15 @@
     {
       "at": "2026-02-26T12:11:28.797Z",
       "totalUsdcValue": 1019.3619
+    },
+    {
+      "at": "2026-02-26T13:11:34.121Z",
+      "totalUsdcValue": 1021.6722
     }
   ],
   "lastTradeAt": "2026-02-25T06:39:32.835Z",
   "createdAt": "2026-02-25T06:39:32.605Z",
-  "updatedAt": "2026-02-26T12:11:28.845Z",
+  "updatedAt": "2026-02-26T13:11:34.152Z",
   "decisionHistory": [
     {
       "at": "2026-02-25T06:47:10.987Z",
@@ -376,6 +380,12 @@
       "action": "HOLD",
       "symbol": null,
       "reason": "SOLは先物主導でノイズが強く、ETFフローも方向感弱め。Akaz moodは明確な不調サインなし。ブラウザsnapshot不可で裁量精度不足のためHOLD。"
+    },
+    {
+      "at": "2026-02-26T13:11:34.121Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLはサポート上で推移する一方、先物主導で過熱感が残る。今週マクロ指標待ちで方向感不鮮明、browser snapshot不可のためHOLD。"
     }
   ]
 }
