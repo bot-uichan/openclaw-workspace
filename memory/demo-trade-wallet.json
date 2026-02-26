@@ -167,11 +167,15 @@
     {
       "at": "2026-02-26T14:15:01.879Z",
       "totalUsdcValue": 1022.4422
+    },
+    {
+      "at": "2026-02-26T14:48:19.011Z",
+      "totalUsdcValue": 1017.2351
     }
   ],
   "lastTradeAt": "2026-02-25T06:39:32.835Z",
   "createdAt": "2026-02-25T06:39:32.605Z",
-  "updatedAt": "2026-02-26T14:15:01.922Z",
+  "updatedAt": "2026-02-26T14:48:19.245Z",
   "decisionHistory": [
     {
       "at": "2026-02-25T06:47:10.987Z",
@@ -406,6 +410,12 @@
       "action": "HOLD",
       "symbol": null,
       "reason": "SOLは短期上昇後でロング偏重気味、ETF資金は方向感が弱くイベント待ち。高値追いの優位性が薄く、browser snapshot失敗のためHOLD。"
+    },
+    {
+      "at": "2026-02-26T14:48:19.011Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLは短期ブレイクで強いが、抵抗帯接近とロング偏重で追随リスク高め。米マクロイベント待ちでボラ警戒、browser snapshot不可のためHOLD。"
     }
   ]
 }
