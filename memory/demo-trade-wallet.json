@@ -159,11 +159,15 @@
     {
       "at": "2026-02-26T13:11:34.121Z",
       "totalUsdcValue": 1021.6722
+    },
+    {
+      "at": "2026-02-26T13:41:22.603Z",
+      "totalUsdcValue": 1021.5988
     }
   ],
   "lastTradeAt": "2026-02-25T06:39:32.835Z",
   "createdAt": "2026-02-25T06:39:32.605Z",
-  "updatedAt": "2026-02-26T13:11:34.152Z",
+  "updatedAt": "2026-02-26T13:41:22.654Z",
   "decisionHistory": [
     {
       "at": "2026-02-25T06:47:10.987Z",
@@ -386,6 +390,12 @@
       "action": "HOLD",
       "symbol": null,
       "reason": "SOLはサポート上で推移する一方、先物主導で過熱感が残る。今週マクロ指標待ちで方向感不鮮明、browser snapshot不可のためHOLD。"
+    },
+    {
+      "at": "2026-02-26T13:41:22.603Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLは反発基調だが上値抵抗付近で、先物の過熱解消も未確認。今週の米マクロ指標で変動余地が大きく、browser snapshot不可のためHOLD。"
     }
   ]
 }
