@@ -163,11 +163,15 @@
     {
       "at": "2026-02-26T13:41:22.603Z",
       "totalUsdcValue": 1021.5988
+    },
+    {
+      "at": "2026-02-26T14:15:01.879Z",
+      "totalUsdcValue": 1022.4422
     }
   ],
   "lastTradeAt": "2026-02-25T06:39:32.835Z",
   "createdAt": "2026-02-25T06:39:32.605Z",
-  "updatedAt": "2026-02-26T13:41:22.654Z",
+  "updatedAt": "2026-02-26T14:15:01.922Z",
   "decisionHistory": [
     {
       "at": "2026-02-25T06:47:10.987Z",
@@ -396,6 +400,12 @@
       "action": "HOLD",
       "symbol": null,
       "reason": "SOLは反発基調だが上値抵抗付近で、先物の過熱解消も未確認。今週の米マクロ指標で変動余地が大きく、browser snapshot不可のためHOLD。"
+    },
+    {
+      "at": "2026-02-26T14:15:01.879Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLは短期上昇後でロング偏重気味、ETF資金は方向感が弱くイベント待ち。高値追いの優位性が薄く、browser snapshot失敗のためHOLD。"
     }
   ]
 }
