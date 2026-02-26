@@ -112,26 +112,34 @@ function renderQuestion() {
   nextBtn.hidden = true;
   choicesEl.innerHTML = "";
 
-  item.choices.forEach((choice, idx) => {
+  const shuffledChoices = item.choices
+    .map((choice, idx) => ({ text: choice, isCorrect: idx === item.answer }))
+    .sort(() => Math.random() - 0.5);
+
+  shuffledChoices.forEach((choice) => {
     const btn = document.createElement("button");
     btn.className = "choice";
-    btn.textContent = choice;
-    btn.addEventListener("click", () => selectAnswer(idx));
+    btn.textContent = choice.text;
+    btn.dataset.correct = String(choice.isCorrect);
+    btn.addEventListener("click", () => selectAnswer(choice.isCorrect, btn));
     choicesEl.appendChild(btn);
   });
 }
 
-function selectAnswer(selectedIndex) {
+function selectAnswer(selectedIsCorrect, selectedBtn) {
   const item = quizData[current];
   const buttons = Array.from(choicesEl.querySelectorAll("button"));
 
-  buttons.forEach((btn, idx) => {
+  buttons.forEach((btn) => {
     btn.disabled = true;
-    if (idx === item.answer) btn.classList.add("correct");
-    if (idx === selectedIndex && idx !== item.answer) btn.classList.add("wrong");
+    if (btn.dataset.correct === "true") btn.classList.add("correct");
   });
 
-  if (selectedIndex === item.answer) {
+  if (!selectedIsCorrect) {
+    selectedBtn.classList.add("wrong");
+  }
+
+  if (selectedIsCorrect) {
     score += 1;
     feedbackEl.textContent = `正解！ ${item.explanation}`;
   } else {
