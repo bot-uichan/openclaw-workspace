@@ -1,0 +1,311 @@
+{
+  "usdc": 700,
+  "positions": {
+    "SOLUSDC": {
+      "qty": 3.667033370003667,
+      "entryPrice": 81.81,
+      "openedAt": "2026-02-25T06:39:32.835Z"
+    }
+  },
+  "history": [
+    {
+      "at": "2026-02-25T06:39:32.835Z",
+      "totalUsdcValue": 1000
+    },
+    {
+      "at": "2026-02-25T06:47:10.987Z",
+      "totalUsdcValue": 999.7066
+    },
+    {
+      "at": "2026-02-25T07:39:45.681Z",
+      "totalUsdcValue": 1001.2101
+    },
+    {
+      "at": "2026-02-25T08:09:16.392Z",
+      "totalUsdcValue": 1000.6967
+    },
+    {
+      "at": "2026-02-25T08:39:20.223Z",
+      "totalUsdcValue": 1001.9802
+    },
+    {
+      "at": "2026-02-25T09:09:00.530Z",
+      "totalUsdcValue": 1002.4569
+    },
+    {
+      "at": "2026-02-25T09:38:57.982Z",
+      "totalUsdcValue": 1001.6502
+    },
+    {
+      "at": "2026-02-25T10:08:56.103Z",
+      "totalUsdcValue": 1003.2637
+    },
+    {
+      "at": "2026-02-25T10:38:52.142Z",
+      "totalUsdcValue": 1003.1903
+    },
+    {
+      "at": "2026-02-25T11:09:00.840Z",
+      "totalUsdcValue": 1002.7869
+    },
+    {
+      "at": "2026-02-25T11:40:12.535Z",
+      "totalUsdcValue": 1004.4004
+    },
+    {
+      "at": "2026-02-25T12:40:07.257Z",
+      "totalUsdcValue": 1005.4639
+    },
+    {
+      "at": "2026-02-25T13:10:13.574Z",
+      "totalUsdcValue": 1006.344
+    },
+    {
+      "at": "2026-02-25T13:40:09.917Z",
+      "totalUsdcValue": 1008.0308
+    },
+    {
+      "at": "2026-02-25T14:31:20.749Z",
+      "totalUsdcValue": 1009.0942
+    },
+    {
+      "at": "2026-02-25T15:04:10.573Z",
+      "totalUsdcValue": 1015.4749
+    },
+    {
+      "at": "2026-02-25T16:04:10.902Z",
+      "totalUsdcValue": 1015.8783
+    },
+    {
+      "at": "2026-02-25T17:04:14.982Z",
+      "totalUsdcValue": 1021.0121
+    },
+    {
+      "at": "2026-02-25T18:04:13.514Z",
+      "totalUsdcValue": 1023.139
+    },
+    {
+      "at": "2026-02-25T19:04:17.105Z",
+      "totalUsdcValue": 1025.2659
+    },
+    {
+      "at": "2026-02-25T19:41:11.139Z",
+      "totalUsdcValue": 1026.7327
+    },
+    {
+      "at": "2026-02-25T20:41:20.928Z",
+      "totalUsdcValue": 1028.9696
+    },
+    {
+      "at": "2026-02-25T21:41:13.376Z",
+      "totalUsdcValue": 1033.0033
+    },
+    {
+      "at": "2026-02-25T22:41:26.470Z",
+      "totalUsdcValue": 1027.026
+    },
+    {
+      "at": "2026-02-25T23:41:15.414Z",
+      "totalUsdcValue": 1020.462
+    },
+    {
+      "at": "2026-02-26T00:41:15.578Z",
+      "totalUsdcValue": 1023.6157
+    },
+    {
+      "at": "2026-02-26T01:41:20.233Z",
+      "totalUsdcValue": 1025.2659
+    },
+    {
+      "at": "2026-02-26T02:41:25.998Z",
+      "totalUsdcValue": 1022.3322
+    },
+    {
+      "at": "2026-02-26T03:41:25.901Z",
+      "totalUsdcValue": 1022.5889
+    },
+    {
+      "at": "2026-02-26T04:11:31.404Z",
+      "totalUsdcValue": 1024.3858
+    }
+  ],
+  "lastTradeAt": "2026-02-25T06:39:32.835Z",
+  "createdAt": "2026-02-25T06:39:32.605Z",
+  "updatedAt": "2026-02-26T04:11:31.448Z",
+  "decisionHistory": [
+    {
+      "at": "2026-02-25T06:47:10.987Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "初回: ルール固定せず様子見"
+    },
+    {
+      "at": "2026-02-25T07:39:45.681Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOL保有継続中。直近ニュースはバリデータ更新など不確実性が残り、デリバティブ指標も方向感が混在。ライブ相場確認は実施したが画面取得が不安定なため、優位性が薄い局面として今回はリスクを取らず様子見。"
+    },
+    {
+      "at": "2026-02-25T08:09:16.392Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLは24hで+7%付近まで上昇し高値82.99に接近、直近は上値追いの効率が落ちやすいと判断。Tavilyではネットワーク活動回復材料と同時に資金はBTC優位・SOL資金調達率マイナスなど方向感が混在。ブラウザでTradingViewを開いて確認を試行したがスナップショット基盤エラーのため、価格API補完の上で今回は無理に売買せずHOLD。"
+    },
+    {
+      "at": "2026-02-25T08:39:20.223Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLは82.4付近で推移し日中上昇は維持する一方、TradingViewテクニカルはSell寄りで短期の方向感が不鮮明。材料も強弱混在のため、今回は新規売買を見送りHOLD。"
+    },
+    {
+      "at": "2026-02-25T09:09:00.530Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "TavilyでSOL材料・デリバティブ・米政策ヘッドラインを確認。バリデータ更新など個別材料はある一方で、ETFフロー悪化とマクロ不透明感で地合いは強弱混在。ChromiumのTradingViewでSOLUSDT約81.97（+3.77%）を確認し、優位性が薄いため今回はHOLD。"
+    },
+    {
+      "at": "2026-02-25T09:38:57.982Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "TavilyでSOL個別材料・デリバティブ・マクロを確認。SOLは強弱材料が混在し、ブラウザでTradingViewのSOLUSDTページを開いてライブ相場確認を実施（環境要因でスナップショット取得不可）。直近は総資産+0.25%程度で優位性が薄いため今回はHOLD。"
+    },
+    {
+      "at": "2026-02-25T10:08:56.103Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "TavilyでSOL個別材料・デリバティブ・マクロを再確認。Firedancer主導の強材料はある一方、資金調達率マイナスとETFフロー悪化で地合いは強弱混在。Chromium/browserでTradingViewを開いてライブ相場確認を試行したが、環境側のPlaywright不足で画面スナップショット不可のため、優位性が薄い局面として今回はHOLD。"
+    },
+    {
+      "at": "2026-02-25T10:38:52.142Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLは含み益が小幅（前回時点で約+0.33%）で、TavilyでもFiredancer進展の強材料と資金調達率マイナス等の弱材料が混在。ChromiumでTradingView SOLUSDTを開いてライブ確認を試行したが環境要因でスナップショット取得不可のため、優位性不足と判断して今回はHOLD。"
+    },
+    {
+      "at": "2026-02-25T11:09:00.840Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLは前回比で小動き（約82.3近辺）かつ含み益も限定的。Tavilyで確認した材料はFiredancer等の中期強材料と、資金調達率マイナス・OI鈍化など短期弱材料が混在。ChromiumでTradingView SOLUSDTを開いてライブ確認を実施（この環境ではPlaywright不足でスナップショット不可）したうえで、優位性不足と判断し今回はHOLD。"
+    },
+    {
+      "at": "2026-02-25T11:40:12.535Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "TavilyでSOLのバリデータ関連材料・デリバティブ指標・マクロ地合いを再確認。強弱材料が混在し短期優位性が薄いためHOLD判断。TradingView SOLUSDTをブラウザで開いてライブ確認を試行したが、この環境はPlaywright未対応でスナップショット不可。"
+    },
+    {
+      "at": "2026-02-25T12:40:07.257Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "TavilyでFiredancer関連の中期強材料、資金調達率マイナス/OI低下など短期弱材料、ETFフロー改善の兆しを再確認。強弱が拮抗し短期の優位性が不足。TradingView SOLUSDTを開いてライブ確認は実施したが、この環境はPlaywright不足でスナップショット不可のため、今回はHOLD。"
+    },
+    {
+      "at": "2026-02-25T13:10:13.574Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "TavilyでSOLのバリデータ多様化/Firedancer系カタリスト、デリバティブ指標（資金調達率・OI・清算）、ETFフロー/マクロセンチメントを確認。中期強材料はある一方で短期はOI鈍化や需給不安定が残り優位性不足のためHOLD。TradingView SOLUSDTのライブ確認は実施したが、環境のPlaywright不足でスナップショット取得不可。"
+    },
+    {
+      "at": "2026-02-25T13:40:09.917Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "TavilyでFiredancer/バリデータ多様化の材料、SOLのfunding・OI・清算、BTC ETFフローとマクロ地合いを再確認。中期強材料と短期の需給不安が混在し優位性が薄いためHOLD。TradingView SOLUSDTはブラウザで開いて確認を試行したが、この環境はPlaywright不足でスナップショット不可。"
+    },
+    {
+      "at": "2026-02-25T14:31:20.749Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "TavilyでSOLの直近材料・デリバティブ需給・BTC ETFフローとマクロを確認。短期は清算増加とレバ偏りで不安定、長期材料は維持で方向感が割れているため優位性不足と判断しHOLD。TradingViewのSOLUSDTをブラウザで確認。"
+    },
+    {
+      "at": "2026-02-25T15:04:10.573Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "TavilyでSOL材料・デリバティブ需給・BTC ETF/マクロ要因を再点検。短期は清算圧とフロー不安定、上昇継続の確証が弱くリスク/リワードが中立のためHOLD。TradingViewでSOLUSDTをブラウザ確認。"
+    },
+    {
+      "at": "2026-02-25T16:04:10.902Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "TavilyでSOLの24h価格/デリバ需給、清算・OI推移、BTC ETFフローとCPI/Fedのマクロ要因を確認。短期は反発継続もレバ調整とニュース品質のばらつきで方向優位が弱く、ポジション維持のHOLDを選択。TradingViewでSOLUSDTをブラウザ確認済み。"
+    },
+    {
+      "at": "2026-02-25T17:04:14.982Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "TavilyでSOLの24hニュース・デリバティブ需給・BTC ETF/マクロ(CPI/Fed)を確認。短期は反発余地と下押しリスクが拮抗し、ニュースソースも混在で優位性が弱いためHOLD。TradingViewのSOLUSDTをブラウザで確認済み。"
+    },
+    {
+      "at": "2026-02-25T18:04:13.514Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "TavilyでSOLの24h動向・デリバ指標・BTC ETFフロー/マクロを確認。上昇継続シナリオはある一方でETFフロー不安定と清算リスクが残り、短期の優位性が不十分なためHOLD。TradingViewでSOLUSDTのライブ画面をブラウザ確認。"
+    },
+    {
+      "at": "2026-02-25T19:04:17.105Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "TavilyでSOL材料・資金調達率/建玉/清算、BTC ETFフローとCPI/Fedのマクロ要因を再確認。短期上昇余地はあるがフロー不安定とボラ高で優位性が弱く、現時点はHOLDが妥当。TradingViewでSOLUSDTをブラウザ確認済み。"
+    },
+    {
+      "at": "2026-02-25T19:41:11.139Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "TavilyでSOLの直近ニュース/フロー、デリバティブ需給、BTC ETFとCPI/Fedマクロを確認。短期は反発余地と下押し材料が拮抗し、優位性が明確でないためHOLD継続。TradingView SOLUSDTをブラウザで確認。"
+    },
+    {
+      "at": "2026-02-25T20:41:20.928Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLは24h上昇後で過熱感があり、資金調達率/OI系の指標は方向感が割れやすい地合い。ブラウザ確認も環境制約で限定的なため、優位性が薄く今回は様子見。"
+    },
+    {
+      "at": "2026-02-25T21:41:13.376Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLは反発報道と弱気デリバティブ指標が混在し、短期の方向優位が不明。マクロ指標発表前後のノイズも大きいため、リスクを増やさずHOLDで様子見。"
+    },
+    {
+      "at": "2026-02-25T22:41:26.470Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLはETFフローの下支えがある一方、上値抵抗帯とデリバティブ弱気が重なり方向感が不明瞭。短期は振れやすく優位性が薄いため、資金維持を優先してHOLD。"
+    },
+    {
+      "at": "2026-02-25T23:41:15.414Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLは短期モメンタム回復で上値抵抗に接近する一方、OI主導の変動リスクが高くフェイクアウト懸念が残る。優位性が薄い局面のため、ポジションは維持してHOLD。"
+    },
+    {
+      "at": "2026-02-26T00:41:15.578Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLは上昇継続の材料がある一方で、OI減少・清算増加で短期の不安定さが大きい。抵抗帯付近でのだましを警戒し、現状はリスク追加せずHOLD。"
+    },
+    {
+      "at": "2026-02-26T01:41:20.233Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLは下支え材料とリスクオフ警戒が拮抗し、資金調達/OI/清算のノイズも大きい。短期の期待値が読みづらいため、無理に回転せずHOLDで継続監視。"
+    },
+    {
+      "at": "2026-02-26T02:41:25.998Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLの資金調達率がマイナスで先物OIも調整中、マクロ指標待ちで方向感が弱いため今回は様子見"
+    },
+    {
+      "at": "2026-02-26T03:41:25.901Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOL関連ニュースは弱含み情報が混在、資金調達率マイナスと清算増で不安定、ETFフローも方向感不足のためHOLD"
+    },
+    {
+      "at": "2026-02-26T04:11:31.404Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "SOLは24h上昇後で資金調達率は小幅プラスだがOI/清算は過熱と巻き戻しが混在。ETFフロー由来のセンチメントも強弱が割れ、TradingViewライブ確認も環境制約で深掘り不足のため優位性が薄くHOLD"
+    }
+  ]
+}
