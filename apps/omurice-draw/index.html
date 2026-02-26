@@ -3,18 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>オムライスお絵描きWeb</title>
+    <title>オムライスお絵描きWeb 3D</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <main class="app">
-      <h1>🍳 オムライスお絵描きWeb</h1>
-      <p class="subtitle">ケチャップで自由にお絵描きしよう！</p>
+      <h1>🍳 オムライスお絵描きWeb (3D)</h1>
+      <p class="subtitle">オムライスをドラッグしてケチャップお絵描き！</p>
 
       <section class="controls">
         <label>
           ペンサイズ
-          <input id="size" type="range" min="2" max="36" value="10" />
+          <input id="size" type="range" min="2" max="40" value="10" />
         </label>
 
         <label>
@@ -31,11 +31,11 @@
         <button id="download">画像保存</button>
       </section>
 
-      <section class="canvas-wrap">
-        <canvas id="plate" width="900" height="600" aria-label="オムライスお絵描きキャンバス"></canvas>
+      <section class="stage-wrap">
+        <div id="stage" aria-label="3Dオムライス"></div>
       </section>
     </main>
 
-    <script src="script.js"></script>
+    <script type="module" src="script.js"></script>
   </body>
 </html>

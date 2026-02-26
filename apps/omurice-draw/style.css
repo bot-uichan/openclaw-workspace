@@ -53,20 +53,24 @@ button {
   color: #492f12;
 }
 
-button:hover {
-  filter: brightness(0.97);
-}
+button:hover { filter: brightness(0.97); }
 
-.canvas-wrap {
+.stage-wrap {
   border-radius: 18px;
   overflow: hidden;
   box-shadow: 0 10px 26px rgba(79, 46, 17, 0.16);
+  background: #d9cdbf;
 }
 
-#plate {
+#stage {
   width: 100%;
-  height: auto;
-  display: block;
-  background: #f2ede9;
+  height: min(70vh, 650px);
+  min-height: 460px;
   touch-action: none;
+}
+
+#stage canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
