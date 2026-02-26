@@ -16,6 +16,12 @@
   - 関心: エージェントの運用ルール整備（USER.md 更新フローなど）。
   - 好み: 送信メッセージは20文字以内が良い
 
+- **あおもな (aomona / Discord: 1195596891434516503)**
+  - 呼び方: あおもなさん
+  - 傾向: 対話しながら要件を詰めるタイプ。検証を実際に回して確認するのが好き。
+  - 関心: 大阪スポット調査、ネットワーク検証（UPnP/ポート開放/Vite疎通）
+  - 好み: 実行結果ベースで、次アクションがすぐ分かる返答
+
 ## Context
 
 *(What do they care about? What projects are they working on? What annoys them? What makes them laugh? Build this over time.)*
