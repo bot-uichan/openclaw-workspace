@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>オムライスお絵描きWeb</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <h1>🍳 オムライスお絵描きWeb</h1>
+      <p class="subtitle">ケチャップで自由にお絵描きしよう！</p>
+
+      <section class="controls">
+        <label>
+          ペンサイズ
+          <input id="size" type="range" min="2" max="36" value="10" />
+        </label>
+
+        <label>
+          色
+          <select id="color">
+            <option value="#cf2b2b">ケチャップ</option>
+            <option value="#ffffff">マヨネーズ</option>
+            <option value="#7b3f00">デミグラス</option>
+            <option value="#2d7f2d">パセリ</option>
+          </select>
+        </label>
+
+        <button id="clear">やりなおし</button>
+        <button id="download">画像保存</button>
+      </section>
+
+      <section class="canvas-wrap">
+        <canvas id="plate" width="900" height="600" aria-label="オムライスお絵描きキャンバス"></canvas>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

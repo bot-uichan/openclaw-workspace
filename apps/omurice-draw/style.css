@@ -1,0 +1,72 @@
+:root {
+  color-scheme: light;
+  font-family: "M PLUS Rounded 1c", "Hiragino Kaku Gothic ProN", sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #fff8ef;
+  color: #3a2d22;
+}
+
+.app {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 20px 16px 28px;
+}
+
+h1 {
+  margin: 8px 0 0;
+  font-size: 2rem;
+}
+
+.subtitle {
+  margin: 8px 0 18px;
+  color: #6a5444;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #e9d8c6;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+button {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #f4c972;
+  color: #492f12;
+}
+
+button:hover {
+  filter: brightness(0.97);
+}
+
+.canvas-wrap {
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 10px 26px rgba(79, 46, 17, 0.16);
+}
+
+#plate {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: #f2ede9;
+  touch-action: none;
+}
