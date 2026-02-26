@@ -50,3 +50,22 @@ __pycache__/
 Thumbs.db
 .vscode/
 .idea/
+
+# --- local workspace clutter (ignore everything not currently committed) ---
+.agents/
+.openclaw/
+BOOTSTRAP.md
+abe-top-20190328-2.jpg
+akaz_motivation.png
+akaz_motivation.svg
+akaz_motivation_daily.json
+bin/
+bun-linux-x64-baseline/
+mootio/
+scratch/
+skills/hikkaku
+tmp_akaz_notes_1000.json
+tmp_akaz_notes_up_to_1000.json
+tmp_nostr_fetch.js
+tmp_nostr_late.json
+vite-react-app/
