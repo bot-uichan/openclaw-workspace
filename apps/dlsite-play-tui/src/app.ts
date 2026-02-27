@@ -16,7 +16,24 @@ const screen = blessed.screen({ smartCSR: true, title: "DLsite Play TUI", fullUn
 const header = blessed.box({ parent: screen, top: 0, left: 0, width: "100%", height: 1, style: { fg: "black", bg: "cyan" }, content: " DLsite TUI | TAB:focus c:cookie i:pw s:search l:library ENTER:load/open a:queue A:queue-folder n:next d:download y:copy q:quit" });
 
 const library = blessed.listtable({ parent: screen, top: 1, left: 0, width: "48%", height: "62%", border: "line", keys: true, vi: true, mouse: true, style: { header: { fg: "yellow", bold: true }, cell: { selected: { bg: "blue" } } }, data: [["Type", "Title", "ID"]] });
-const tree = blessed.list({ parent: screen, top: 1, left: "48%", width: "34%", height: "62%", border: "line", label: " Tree ", keys: true, vi: true, mouse: true, items: ["(load with t)"] });
+const tree = blessed.list({
+  parent: screen,
+  top: 1,
+  left: "48%",
+  width: "34%",
+  height: "62%",
+  border: "line",
+  label: " Tree ",
+  keys: true,
+  vi: true,
+  mouse: true,
+  tags: true,
+  style: {
+    selected: { bg: "yellow", fg: "black", bold: true },
+    item: { fg: "white" },
+  },
+  items: ["(load with t)"],
+});
 const thumb = blessed.box({ parent: screen, top: 1, left: "82%", width: "18%", height: "31%", border: "line", label: " Thumb ", tags: true, content: "(none)" });
 const queue = blessed.list({ parent: screen, top: "32%", left: "82%", width: "18%", height: "31%", border: "line", label: " Queue ", keys: true, vi: true, mouse: true, items: ["(empty)"] });
 const selectionInfo = blessed.box({ parent: screen, top: "63%", left: 0, width: "100%", height: 3, border: "line", tags: true, content: " {cyan-fg}Selection{/cyan-fg}: -" });
@@ -120,7 +137,18 @@ function rebuildTreeList(): void {
   };
   walk(treeRoots, 0);
   const prev = ((tree as unknown as { selected: number }).selected ?? 0);
-  tree.setItems(treeFlat.map((r) => `${"  ".repeat(r.depth)}${r.node.kind === "folder" ? (r.expanded ? "▾ " : "▸ ") : "  ♪ "}${r.node.name}`));
+  tree.setItems(
+    treeFlat.map((r) => {
+      const indent = "  ".repeat(r.depth);
+      if (r.node.kind === "folder") {
+        const icon = r.expanded ? "▾ " : "▸ ";
+        return `${indent}{cyan-fg}${icon}${r.node.name}{/cyan-fg}`;
+      }
+      const file = r.node.entry;
+      const tone = file.isAudio ? "green-fg" : "white-fg";
+      return `${indent}{${tone}}  ♪ ${r.node.name}{/${tone}}`;
+    }),
+  );
   if (treeFlat.length > 0) tree.select(Math.min(prev, treeFlat.length - 1));
   updateSelectionInfo();
   screen.render();
