@@ -138,6 +138,7 @@ export class DlsiteClient {
     const $ = load(text);
     const map = new Map<string, OwnedWork>();
 
+    // 1) Anchorベース抽出
     $("a[href]").each((_, el) => {
       const href = $(el).attr("href") ?? "";
       const m = href.match(/(RJ\d+|BJ\d+|VJ\d+|[A-Z]{2}\d{4,})/i);
@@ -151,21 +152,36 @@ export class DlsiteClient {
         $(el).text().replace(/\s+/g, " ").trim() ||
         id;
 
-      if (!map.has(id)) {
-        map.set(id, {
-          id,
-          title,
-          detailUrl: /\/work\/|\/product\//.test(href) ? abs : `${BASE}/work/${id}`,
-        });
-      }
-
-      const w = map.get(id)!;
-      if (/viewer|play/i.test(href)) w.playUrl = abs;
-      if (/download/i.test(href)) w.downloadUrl = abs;
-      if (/\/work\/|\/product\//.test(href)) w.detailUrl = abs;
+      upsertWork(map, id, title, abs, href);
     });
 
-    return Array.from(map.values()).slice(0, 500);
+    // 2) Script(JSON)ベース抽出 (Next.js/Nuxt埋め込みなど)
+    const scriptTexts = $("script")
+      .map((_, el) => $(el).html() ?? "")
+      .get()
+      .filter(Boolean);
+
+    for (const s of scriptTexts) {
+      const json = extractLikelyJson(s);
+      if (!json) continue;
+      try {
+        const parsed = JSON.parse(json);
+        collectWorksFromUnknownTree(parsed, map);
+      } catch {
+        // ignore broken snippets
+      }
+    }
+
+    // 3) 最終fallback: HTML全体から作品IDだけでも拾う
+    const ids = text.match(/(RJ\d+|BJ\d+|VJ\d+|[A-Z]{2}\d{4,})/gi) ?? [];
+    for (const rawId of ids) {
+      const id = rawId.toUpperCase();
+      if (!map.has(id)) {
+        map.set(id, { id, title: id, detailUrl: `${BASE}/work/${id}` });
+      }
+    }
+
+    return Array.from(map.values()).slice(0, 1000);
   }
 
   async openForPlay(work: OwnedWork): Promise<void> {
@@ -241,6 +257,100 @@ export class DlsiteClient {
   private async saveCookieStore(): Promise<void> {
     await fs.writeFile(this.cookieStorePath, JSON.stringify(this.cookies, null, 2), "utf8");
   }
+}
+
+function upsertWork(
+  map: Map<string, OwnedWork>,
+  id: string,
+  title: string,
+  absUrl: string,
+  rawHref?: string,
+): void {
+  if (!map.has(id)) {
+    map.set(id, {
+      id,
+      title: title || id,
+      detailUrl: /\/work\/|\/product\//.test(rawHref ?? absUrl) ? absUrl : `${BASE}/work/${id}`,
+    });
+  }
+  const w = map.get(id)!;
+  if (/viewer|play/i.test(rawHref ?? absUrl)) w.playUrl = absUrl;
+  if (/download/i.test(rawHref ?? absUrl)) w.downloadUrl = absUrl;
+  if (/\/work\/|\/product\//.test(rawHref ?? absUrl)) w.detailUrl = absUrl;
+}
+
+function extractLikelyJson(scriptBody: string): string | null {
+  const body = scriptBody.trim();
+  if (!body) return null;
+  if (body.startsWith("{") || body.startsWith("[")) return body;
+
+  const m = body.match(/(?:__NEXT_DATA__|INITIAL_STATE|__NUXT__|window\.__[^=]+)=\s*([\s\S]*?);?\s*$/m);
+  if (!m?.[1]) return null;
+  const candidate = m[1].trim();
+  if (candidate.startsWith("{") || candidate.startsWith("[")) return candidate;
+  return null;
+}
+
+function collectWorksFromUnknownTree(node: unknown, map: Map<string, OwnedWork>): void {
+  const seen = new Set<unknown>();
+
+  const walk = (v: unknown): void => {
+    if (!v || typeof v !== "object") return;
+    if (seen.has(v)) return;
+    seen.add(v);
+
+    const obj = v as Record<string, unknown>;
+
+    const candidates = [obj.workno, obj.workNo, obj.product_id, obj.productId, obj.id]
+      .map((x) => (typeof x === "string" ? x : typeof x === "number" ? String(x) : ""))
+      .filter(Boolean);
+
+    const maybeId = candidates.find((x) => /(RJ\d+|BJ\d+|VJ\d+|[A-Z]{2}\d{4,})/i.test(x));
+    if (maybeId) {
+      const id = maybeId.match(/(RJ\d+|BJ\d+|VJ\d+|[A-Z]{2}\d{4,})/i)?.[1]?.toUpperCase();
+      if (id) {
+        const title =
+          (typeof obj.title === "string" && obj.title) ||
+          (typeof obj.work_name === "string" && obj.work_name) ||
+          (typeof obj.workName === "string" && obj.workName) ||
+          id;
+
+        const urlRaw =
+          (typeof obj.url === "string" && obj.url) ||
+          (typeof obj.detail_url === "string" && obj.detail_url) ||
+          (typeof obj.detailUrl === "string" && obj.detailUrl) ||
+          `${BASE}/work/${id}`;
+
+        upsertWork(map, id, title, toAbs(urlRaw), urlRaw);
+
+        const playRaw =
+          (typeof obj.play_url === "string" && obj.play_url) ||
+          (typeof obj.playUrl === "string" && obj.playUrl) ||
+          (typeof obj.viewer_url === "string" && obj.viewer_url) ||
+          (typeof obj.viewerUrl === "string" && obj.viewerUrl);
+        if (playRaw) {
+          map.get(id)!.playUrl = toAbs(playRaw);
+        }
+
+        const dlRaw =
+          (typeof obj.download_url === "string" && obj.download_url) ||
+          (typeof obj.downloadUrl === "string" && obj.downloadUrl);
+        if (dlRaw) {
+          map.get(id)!.downloadUrl = toAbs(dlRaw);
+        }
+      }
+    }
+
+    for (const val of Object.values(obj)) {
+      if (Array.isArray(val)) {
+        for (const x of val) walk(x);
+      } else {
+        walk(val);
+      }
+    }
+  };
+
+  walk(node);
 }
 
 function dedupeCookies(list: CookieKV[]): CookieKV[] {
