@@ -25,6 +25,13 @@ npm run dev
 この版は、**PlaywrightはCookie取得専用**で使用します。
 検索/ライブラリ/ダウンロード情報の取得は内部API(HTTP)を直接使用します。
 
+主に利用する内部API:
+- `GET https://play.dlsite.com/api/v3/content/count?last=0`
+- `GET https://play.dlsite.com/api/v3/content/sales?last=0`
+- `POST https://play.dlsite.com/api/v3/content/works`
+- `GET https://play.dl.dlsite.com/api/v3/download/sign/cookie?workno=RJ...`
+- `GET {sign.url}ziptree.json`
+
 `c` キーで以下いずれかを貼り付けてください:
 
 ```txt

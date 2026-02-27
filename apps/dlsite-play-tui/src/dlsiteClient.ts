@@ -36,10 +36,12 @@ export class DlsiteClient {
   }
 
   async ensureLogin(): Promise<boolean> {
-    const res = await this.fetchText(`${BASE}/library`);
-    if (res.url.includes("/login")) return false;
-    if (/ログイン|login/i.test(res.text) && /password|パスワード/i.test(res.text)) return false;
-    return true;
+    try {
+      const data = await this.fetchJson<{ user?: number }>("https://play.dlsite.com/api/v3/content/count?last=0");
+      return typeof data.user === "number";
+    } catch {
+      return false;
+    }
   }
 
   async setCookieInput(raw: string): Promise<number> {
@@ -130,58 +132,56 @@ export class DlsiteClient {
   }
 
   async listOwnedWorks(): Promise<OwnedWork[]> {
-    const { text, url } = await this.fetchText(`${BASE}/library`);
-    if (url.includes("/login")) {
-      throw new Error("未ログインです。Cookieを登録してください。");
+    // DLsite Play internal API (v3)
+    const countData = await this.fetchJson<{ user?: number }>("https://play.dlsite.com/api/v3/content/count?last=0");
+    if (!countData || typeof countData.user !== "number") {
+      throw new Error("ライブラリAPI応答が不正です");
     }
 
-    const $ = load(text);
-    const map = new Map<string, OwnedWork>();
+    const sales = await this.fetchJson<Array<{ workno?: string }>>("https://play.dlsite.com/api/v3/content/sales?last=0");
+    const worknos = dedupe(
+      (sales ?? [])
+        .map((x) => (typeof x?.workno === "string" ? x.workno.toUpperCase() : ""))
+        .filter(Boolean),
+    );
 
-    // 1) Anchorベース抽出
-    $("a[href]").each((_, el) => {
-      const href = $(el).attr("href") ?? "";
-      const m = href.match(/(RJ\d+|BJ\d+|VJ\d+|[A-Z]{2}\d{4,})/i);
-      if (!m) return;
+    if (countData.user > 0 && worknos.length === 0) {
+      throw new Error("未ログインか、Cookieが不足しています (sales APIが0件)");
+    }
 
-      const id = m[1].toUpperCase();
-      const abs = toAbs(href);
-      const title =
-        $(el).attr("aria-label")?.trim() ||
-        $(el).find("img").attr("alt")?.trim() ||
-        $(el).text().replace(/\s+/g, " ").trim() ||
-        id;
+    const works: OwnedWork[] = [];
+    for (let i = 0; i < worknos.length; i += 100) {
+      const chunk = worknos.slice(i, i + 100);
+      const payload = await this.fetchJson<{ works?: Array<Record<string, unknown>> }>(
+        "https://play.dlsite.com/api/v3/content/works",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", referer: "https://play.dlsite.com/library" },
+          body: JSON.stringify(chunk),
+        },
+      );
 
-      upsertWork(map, id, title, abs, href);
-    });
+      for (const w of payload.works ?? []) {
+        const id = String(w.workno ?? "").toUpperCase();
+        if (!id) continue;
 
-    // 2) Script(JSON)ベース抽出 (Next.js/Nuxt埋め込みなど)
-    const scriptTexts = $("script")
-      .map((_, el) => $(el).html() ?? "")
-      .get()
-      .filter(Boolean);
+        const nameObj = w.name as Record<string, unknown> | undefined;
+        const title =
+          (typeof nameObj?.ja_JP === "string" && nameObj.ja_JP) ||
+          (typeof nameObj?.en_US === "string" && nameObj.en_US) ||
+          (typeof w.work_name === "string" && w.work_name) ||
+          id;
 
-    for (const s of scriptTexts) {
-      const json = extractLikelyJson(s);
-      if (!json) continue;
-      try {
-        const parsed = JSON.parse(json);
-        collectWorksFromUnknownTree(parsed, map);
-      } catch {
-        // ignore broken snippets
+        works.push({
+          id,
+          title,
+          detailUrl: `https://www.dlsite.com/maniax/work/=/product_id/${id}.html`,
+          playUrl: `https://play.dlsite.com/work/${id}`,
+        });
       }
     }
 
-    // 3) 最終fallback: HTML全体から作品IDだけでも拾う
-    const ids = text.match(/(RJ\d+|BJ\d+|VJ\d+|[A-Z]{2}\d{4,})/gi) ?? [];
-    for (const rawId of ids) {
-      const id = rawId.toUpperCase();
-      if (!map.has(id)) {
-        map.set(id, { id, title: id, detailUrl: `${BASE}/work/${id}` });
-      }
-    }
-
-    return Array.from(map.values()).slice(0, 1000);
+    return works;
   }
 
   async openForPlay(work: OwnedWork): Promise<void> {
@@ -193,36 +193,41 @@ export class DlsiteClient {
   }
 
   async downloadWork(work: OwnedWork): Promise<{ savedTo: string; suggestedName: string }> {
-    const target = work.downloadUrl ?? (await this.findDownloadUrl(work.detailUrl));
-    if (!target) {
-      throw new Error("ダウンロードURLを見つけられませんでした。購入済み作品か確認してください。");
+    const sign = await this.fetchJson<{ url?: string }>(`https://play.dl.dlsite.com/api/v3/download/sign/cookie?workno=${encodeURIComponent(work.id)}`);
+    if (!sign?.url) {
+      throw new Error("download/sign APIからURL取得に失敗しました");
     }
 
-    const res = await fetch(target, {
-      headers: this.headers(),
-      redirect: "follow",
-    });
-
-    if (!res.ok || !res.body) {
-      throw new Error(`ダウンロード失敗: HTTP ${res.status}`);
+    const ziptree = await this.fetchJson<{ tree?: unknown[]; playfile?: Record<string, any> }>(`${sign.url}ziptree.json`);
+    const files = flattenZipTree(ziptree.tree ?? []);
+    if (files.length === 0) {
+      throw new Error("ziptreeが空でした");
     }
 
-    const cd = res.headers.get("content-disposition") ?? "";
-    const fromHeader = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(cd);
-    const guessed = decodeURIComponent(fromHeader?.[1] ?? fromHeader?.[2] ?? `${work.id}.bin`);
-    const safe = guessed.replace(/[\\/:*?"<>|]/g, "_");
-    const outPath = path.join(this.downloadDir, safe);
+    const outDir = path.join(this.downloadDir, sanitizeFileName(`${work.id}_${work.title}`).slice(0, 120));
+    await fs.mkdir(outDir, { recursive: true });
 
-    await pipeline(Readable.fromWeb(res.body as never), createWriteStream(outPath));
-    return { savedTo: outPath, suggestedName: safe };
-  }
+    let downloaded = 0;
+    for (const f of files) {
+      const meta = ziptree.playfile?.[f.hashname];
+      const optimizedName = meta?.files?.optimized?.name ?? meta?.optimized?.name ?? meta?.image?.optimized?.name;
+      if (!optimizedName || typeof optimizedName !== "string") continue;
 
-  private async findDownloadUrl(detailUrl: string): Promise<string | null> {
-    const { text } = await this.fetchText(detailUrl);
-    const $ = load(text);
-    const cand = $("a[href*='download'], button[data-href*='download']").first();
-    const href = cand.attr("href") ?? cand.attr("data-href");
-    return href ? toAbs(href) : null;
+      const url = `${sign.url}optimized/${optimizedName}`;
+      const res = await fetch(url, { headers: this.headers(), redirect: "follow" });
+      if (!res.ok || !res.body) continue;
+
+      const local = path.join(outDir, sanitizePath(f.path));
+      await fs.mkdir(path.dirname(local), { recursive: true });
+      await pipeline(Readable.fromWeb(res.body as never), createWriteStream(local));
+      downloaded += 1;
+    }
+
+    if (downloaded === 0) {
+      throw new Error("最適化ファイルを1件も取得できませんでした");
+    }
+
+    return { savedTo: outDir, suggestedName: path.basename(outDir) };
   }
 
   private headers(): Record<string, string> {
@@ -244,6 +249,20 @@ export class DlsiteClient {
     return { text, url: res.url };
   }
 
+  private async fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+    const res = await fetch(url, {
+      ...init,
+      headers: {
+        ...this.headers(),
+        accept: "application/json, text/plain, */*",
+        ...(init?.headers ?? {}),
+      },
+      redirect: "follow",
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
+    return (await res.json()) as T;
+  }
+
   private async loadCookieStore(): Promise<void> {
     try {
       const raw = await fs.readFile(this.cookieStorePath, "utf8");
@@ -259,98 +278,45 @@ export class DlsiteClient {
   }
 }
 
-function upsertWork(
-  map: Map<string, OwnedWork>,
-  id: string,
-  title: string,
-  absUrl: string,
-  rawHref?: string,
-): void {
-  if (!map.has(id)) {
-    map.set(id, {
-      id,
-      title: title || id,
-      detailUrl: /\/work\/|\/product\//.test(rawHref ?? absUrl) ? absUrl : `${BASE}/work/${id}`,
-    });
-  }
-  const w = map.get(id)!;
-  if (/viewer|play/i.test(rawHref ?? absUrl)) w.playUrl = absUrl;
-  if (/download/i.test(rawHref ?? absUrl)) w.downloadUrl = absUrl;
-  if (/\/work\/|\/product\//.test(rawHref ?? absUrl)) w.detailUrl = absUrl;
-}
+function flattenZipTree(nodes: unknown[]): Array<{ hashname: string; path: string }> {
+  const out: Array<{ hashname: string; path: string }> = [];
 
-function extractLikelyJson(scriptBody: string): string | null {
-  const body = scriptBody.trim();
-  if (!body) return null;
-  if (body.startsWith("{") || body.startsWith("[")) return body;
+  const walk = (arr: unknown[], parent = ""): void => {
+    for (const n of arr) {
+      if (!n || typeof n !== "object") continue;
+      const obj = n as Record<string, unknown>;
+      const type = typeof obj.type === "string" ? obj.type : "";
+      const name = typeof obj.name === "string" ? obj.name : "";
+      const cur = parent ? `${parent}/${name}` : name;
 
-  const m = body.match(/(?:__NEXT_DATA__|INITIAL_STATE|__NUXT__|window\.__[^=]+)=\s*([\s\S]*?);?\s*$/m);
-  if (!m?.[1]) return null;
-  const candidate = m[1].trim();
-  if (candidate.startsWith("{") || candidate.startsWith("[")) return candidate;
-  return null;
-}
-
-function collectWorksFromUnknownTree(node: unknown, map: Map<string, OwnedWork>): void {
-  const seen = new Set<unknown>();
-
-  const walk = (v: unknown): void => {
-    if (!v || typeof v !== "object") return;
-    if (seen.has(v)) return;
-    seen.add(v);
-
-    const obj = v as Record<string, unknown>;
-
-    const candidates = [obj.workno, obj.workNo, obj.product_id, obj.productId, obj.id]
-      .map((x) => (typeof x === "string" ? x : typeof x === "number" ? String(x) : ""))
-      .filter(Boolean);
-
-    const maybeId = candidates.find((x) => /(RJ\d+|BJ\d+|VJ\d+|[A-Z]{2}\d{4,})/i.test(x));
-    if (maybeId) {
-      const id = maybeId.match(/(RJ\d+|BJ\d+|VJ\d+|[A-Z]{2}\d{4,})/i)?.[1]?.toUpperCase();
-      if (id) {
-        const title =
-          (typeof obj.title === "string" && obj.title) ||
-          (typeof obj.work_name === "string" && obj.work_name) ||
-          (typeof obj.workName === "string" && obj.workName) ||
-          id;
-
-        const urlRaw =
-          (typeof obj.url === "string" && obj.url) ||
-          (typeof obj.detail_url === "string" && obj.detail_url) ||
-          (typeof obj.detailUrl === "string" && obj.detailUrl) ||
-          `${BASE}/work/${id}`;
-
-        upsertWork(map, id, title, toAbs(urlRaw), urlRaw);
-
-        const playRaw =
-          (typeof obj.play_url === "string" && obj.play_url) ||
-          (typeof obj.playUrl === "string" && obj.playUrl) ||
-          (typeof obj.viewer_url === "string" && obj.viewer_url) ||
-          (typeof obj.viewerUrl === "string" && obj.viewerUrl);
-        if (playRaw) {
-          map.get(id)!.playUrl = toAbs(playRaw);
-        }
-
-        const dlRaw =
-          (typeof obj.download_url === "string" && obj.download_url) ||
-          (typeof obj.downloadUrl === "string" && obj.downloadUrl);
-        if (dlRaw) {
-          map.get(id)!.downloadUrl = toAbs(dlRaw);
-        }
+      if (type === "file") {
+        const hashname = typeof obj.hashname === "string" ? obj.hashname : "";
+        if (hashname && cur) out.push({ hashname, path: cur });
+        continue;
       }
-    }
 
-    for (const val of Object.values(obj)) {
-      if (Array.isArray(val)) {
-        for (const x of val) walk(x);
-      } else {
-        walk(val);
-      }
+      const children = Array.isArray(obj.children) ? obj.children : [];
+      if (children.length) walk(children, cur || parent);
     }
   };
 
-  walk(node);
+  walk(nodes);
+  return out;
+}
+
+function sanitizeFileName(name: string): string {
+  return name.replace(/[\\/:*?"<>|]/g, "_").replace(/\s+/g, " ").trim();
+}
+
+function sanitizePath(p: string): string {
+  return p
+    .split("/")
+    .map((x) => sanitizeFileName(x || "unnamed"))
+    .join(path.sep);
+}
+
+function dedupe(list: string[]): string[] {
+  return Array.from(new Set(list));
 }
 
 function dedupeCookies(list: CookieKV[]): CookieKV[] {
