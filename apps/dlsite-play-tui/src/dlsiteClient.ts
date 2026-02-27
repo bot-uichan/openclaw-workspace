@@ -1,220 +1,228 @@
 import fs from "node:fs/promises";
+import { createWriteStream } from "node:fs";
 import path from "node:path";
-import { chromium, BrowserContext, Cookie, Page } from "playwright";
+import { pipeline } from "node:stream/promises";
+import { Readable } from "node:stream";
+import os from "node:os";
+import { load } from "cheerio";
+import open from "open";
 import type { OwnedWork, SearchResult } from "./types.js";
 
 const BASE = "https://play.dlsite.com";
 
+type CookieKV = { name: string; value: string };
+type CookieJson = { name: string; value: string; domain?: string; path?: string; secure?: boolean; httpOnly?: boolean };
+
 export class DlsiteClient {
-  private context?: BrowserContext;
-  private page?: Page;
+  private cookies: CookieKV[] = [];
+  private readonly cookieStorePath: string;
 
   constructor(
-    private readonly userDataDir: string,
+    private readonly stateDir: string,
     private readonly downloadDir: string,
-    private readonly headless = true,
-  ) {}
+  ) {
+    this.cookieStorePath = path.join(this.stateDir, "cookies.json");
+  }
 
   async boot(): Promise<void> {
-    await fs.mkdir(this.userDataDir, { recursive: true });
+    await fs.mkdir(this.stateDir, { recursive: true });
     await fs.mkdir(this.downloadDir, { recursive: true });
-
-    this.context = await chromium.launchPersistentContext(this.userDataDir, {
-      headless: this.headless,
-      acceptDownloads: true,
-      viewport: { width: 1440, height: 900 },
-    });
-
-    this.page = this.context.pages()[0] ?? (await this.context.newPage());
-    await this.page.goto(BASE, { waitUntil: "domcontentloaded" });
+    await this.loadCookieStore();
   }
 
   async close(): Promise<void> {
-    await this.context?.close();
+    return;
   }
 
   async ensureLogin(): Promise<boolean> {
-    const page = this.mustPage();
-    await page.goto(`${BASE}/library`, { waitUntil: "domcontentloaded" });
-
-    const url = page.url();
-    if (url.includes("/login")) {
-      return false;
-    }
-
-    const hasMyPageLink = await page.locator('a[href*="/mypage"], a[href*="/library"]').first().isVisible().catch(() => false);
-    return hasMyPageLink;
+    const res = await this.fetchText(`${BASE}/library`);
+    if (res.url.includes("/login")) return false;
+    if (/ログイン|login/i.test(res.text) && /password|パスワード/i.test(res.text)) return false;
+    return true;
   }
 
-  async setCookieHeader(raw: string): Promise<number> {
-    const context = this.mustContext();
-    const parsed = raw
-      .split(";")
-      .map((part) => part.trim())
-      .filter(Boolean)
-      .map((pair) => {
-        const idx = pair.indexOf("=");
-        if (idx <= 0) return null;
-        const name = pair.slice(0, idx).trim();
-        const value = pair.slice(idx + 1).trim();
-        if (!name || !value) return null;
-        const c: Cookie = {
-          name,
-          value,
-          domain: ".dlsite.com",
-          path: "/",
-          httpOnly: false,
-          secure: true,
-          sameSite: "Lax",
-          expires: -1,
-        };
-        return c;
-      })
-      .filter((c): c is Cookie => c !== null);
+  async setCookieInput(raw: string): Promise<number> {
+    const input = raw.trim();
+    if (!input) throw new Error("Cookie入力が空です");
 
-    if (parsed.length === 0) {
-      throw new Error("有効なCookieが見つかりませんでした");
+    if (input.startsWith("[")) {
+      const arr = JSON.parse(input) as CookieJson[];
+      const pairs = arr
+        .filter((c) => c && typeof c.name === "string" && typeof c.value === "string")
+        .map((c) => ({ name: c.name.trim(), value: c.value }));
+      this.cookies = dedupeCookies([...this.cookies, ...pairs]);
+    } else {
+      const pairs = input
+        .split(";")
+        .map((x) => x.trim())
+        .filter(Boolean)
+        .map((pair) => {
+          const i = pair.indexOf("=");
+          if (i <= 0) return null;
+          return { name: pair.slice(0, i).trim(), value: pair.slice(i + 1).trim() };
+        })
+        .filter((v): v is CookieKV => Boolean(v?.name) && Boolean(v?.value));
+
+      this.cookies = dedupeCookies([...this.cookies, ...pairs]);
     }
 
-    await context.addCookies(parsed);
-    await this.mustPage().goto(`${BASE}/library`, { waitUntil: "domcontentloaded" });
-    return parsed.length;
+    await this.saveCookieStore();
+    return this.cookies.length;
   }
 
   async search(keyword: string): Promise<SearchResult[]> {
-    const page = this.mustPage();
     const url = `${BASE}/search?word=${encodeURIComponent(keyword)}`;
-    await page.goto(url, { waitUntil: "domcontentloaded" });
+    const { text } = await this.fetchText(url);
+    const $ = load(text);
 
-    await page.waitForTimeout(700);
+    const out: SearchResult[] = [];
+    const seen = new Set<string>();
 
-    return page.evaluate(() => {
-      const cards = Array.from(document.querySelectorAll("a[href*='/work/'], a[href*='/product/']"));
-      const seen = new Set<string>();
-      const out: Array<{ title: string; url: string; creator?: string; thumbnail?: string }> = [];
+    $("a[href]").each((_, el) => {
+      const href = $(el).attr("href") ?? "";
+      if (!/\/work\/|\/product\//.test(href)) return;
+      const abs = toAbs(href);
+      if (seen.has(abs)) return;
 
-      for (const a of cards) {
-        const href = (a as HTMLAnchorElement).href;
-        if (!href || seen.has(href)) continue;
+      const title =
+        $(el).attr("aria-label")?.trim() ||
+        $(el).find("img").attr("alt")?.trim() ||
+        $(el).text().replace(/\s+/g, " ").trim() ||
+        "(untitled)";
 
-        const title =
-          a.getAttribute("aria-label")?.trim() ||
-          (a.querySelector("img") as HTMLImageElement | null)?.alt?.trim() ||
-          a.textContent?.trim() ||
-          "(untitled)";
-
-        if (title.length < 2) continue;
-
-        seen.add(href);
-        out.push({
-          title,
-          url: href,
-          thumbnail: (a.querySelector("img") as HTMLImageElement | null)?.src,
-        });
-      }
-
-      return out.slice(0, 80);
+      seen.add(abs);
+      out.push({ title, url: abs, thumbnail: $(el).find("img").attr("src") });
     });
+
+    return out.slice(0, 100);
   }
 
   async listOwnedWorks(): Promise<OwnedWork[]> {
-    const page = this.mustPage();
-    await page.goto(`${BASE}/library`, { waitUntil: "domcontentloaded" });
-
-    if (page.url().includes("/login")) {
-      throw new Error("未ログインです。cookieコマンドでCookieを登録してください。");
+    const { text, url } = await this.fetchText(`${BASE}/library`);
+    if (url.includes("/login")) {
+      throw new Error("未ログインです。Cookieを登録してください。");
     }
 
-    await page.waitForTimeout(1200);
+    const $ = load(text);
+    const map = new Map<string, OwnedWork>();
 
-    for (let i = 0; i < 6; i++) {
-      await page.mouse.wheel(0, 3000);
-      await page.waitForTimeout(300);
-    }
+    $("a[href]").each((_, el) => {
+      const href = $(el).attr("href") ?? "";
+      const m = href.match(/(RJ\d+|BJ\d+|VJ\d+|[A-Z]{2}\d{4,})/i);
+      if (!m) return;
 
-    const works = await page.evaluate(() => {
-      const idPattern = /(RJ\d+|BJ\d+|VJ\d+|[A-Z]{2}\d{4,})/i;
-      const anchors = Array.from(document.querySelectorAll("a[href]"));
-      const map = new Map<string, { id: string; title: string; detailUrl: string; playUrl?: string; downloadUrl?: string }>();
+      const id = m[1].toUpperCase();
+      const abs = toAbs(href);
+      const title =
+        $(el).attr("aria-label")?.trim() ||
+        $(el).find("img").attr("alt")?.trim() ||
+        $(el).text().replace(/\s+/g, " ").trim() ||
+        id;
 
-      const ensure = (id: string, title: string, detailUrl: string) => {
-        if (!map.has(id)) {
-          map.set(id, { id, title: title || id, detailUrl });
-        }
-      };
-
-      for (const a of anchors) {
-        const href = (a as HTMLAnchorElement).href;
-        if (!href) continue;
-
-        const m = href.match(idPattern);
-        if (!m) continue;
-
-        const id = m[1].toUpperCase();
-        const title =
-          a.getAttribute("aria-label")?.trim() ||
-          (a.querySelector("img") as HTMLImageElement | null)?.alt?.trim() ||
-          a.textContent?.replace(/\s+/g, " ").trim() ||
-          id;
-
-        if (href.includes("/work/") || href.includes("/product/") || href.includes("/announce/")) {
-          ensure(id, title, href);
-        } else if (href.includes("viewer") || href.includes("play")) {
-          ensure(id, title, `${location.origin}/work/${id}`);
-          map.get(id)!.playUrl = href;
-        } else if (href.includes("download")) {
-          ensure(id, title, `${location.origin}/work/${id}`);
-          map.get(id)!.downloadUrl = href;
-        }
+      if (!map.has(id)) {
+        map.set(id, {
+          id,
+          title,
+          detailUrl: /\/work\/|\/product\//.test(href) ? abs : `${BASE}/work/${id}`,
+        });
       }
 
-      return Array.from(map.values()).slice(0, 500);
+      const w = map.get(id)!;
+      if (/viewer|play/i.test(href)) w.playUrl = abs;
+      if (/download/i.test(href)) w.downloadUrl = abs;
+      if (/\/work\/|\/product\//.test(href)) w.detailUrl = abs;
     });
 
-    return works;
+    return Array.from(map.values()).slice(0, 500);
   }
 
   async openForPlay(work: OwnedWork): Promise<void> {
-    const page = this.mustPage();
-    await page.goto(work.playUrl ?? work.detailUrl, { waitUntil: "domcontentloaded" });
-  }
-
-  async queueDownloadByOpenPage(): Promise<{ savedTo: string; suggestedName: string }> {
-    const page = this.mustPage();
-
-    const downloadButton = page
-      .locator("a:has-text('ダウンロード'), button:has-text('ダウンロード'), a:has-text('Download'), button:has-text('Download')")
-      .first();
-
-    const isVisible = await downloadButton.isVisible().catch(() => false);
-    if (!isVisible) {
-      throw new Error("ダウンロードボタンが見つかりませんでした。作品ページを開いてから再実行してください。");
-    }
-
-    const [download] = await Promise.all([
-      page.waitForEvent("download", { timeout: 60_000 }),
-      downloadButton.click(),
-    ]);
-
-    const suggestedName = download.suggestedFilename();
-    const outPath = path.join(this.downloadDir, suggestedName);
-    await download.saveAs(outPath);
-
-    return { savedTo: outPath, suggestedName };
+    await open(work.playUrl ?? work.detailUrl);
   }
 
   async openWorkDetail(url: string): Promise<void> {
-    const page = this.mustPage();
-    await page.goto(url, { waitUntil: "domcontentloaded" });
+    await open(url);
   }
 
-  private mustPage(): Page {
-    if (!this.page) throw new Error("client is not booted");
-    return this.page;
+  async downloadWork(work: OwnedWork): Promise<{ savedTo: string; suggestedName: string }> {
+    const target = work.downloadUrl ?? (await this.findDownloadUrl(work.detailUrl));
+    if (!target) {
+      throw new Error("ダウンロードURLを見つけられませんでした。購入済み作品か確認してください。");
+    }
+
+    const res = await fetch(target, {
+      headers: this.headers(),
+      redirect: "follow",
+    });
+
+    if (!res.ok || !res.body) {
+      throw new Error(`ダウンロード失敗: HTTP ${res.status}`);
+    }
+
+    const cd = res.headers.get("content-disposition") ?? "";
+    const fromHeader = /filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i.exec(cd);
+    const guessed = decodeURIComponent(fromHeader?.[1] ?? fromHeader?.[2] ?? `${work.id}.bin`);
+    const safe = guessed.replace(/[\\/:*?"<>|]/g, "_");
+    const outPath = path.join(this.downloadDir, safe);
+
+    await pipeline(Readable.fromWeb(res.body as never), createWriteStream(outPath));
+    return { savedTo: outPath, suggestedName: safe };
   }
 
-  private mustContext(): BrowserContext {
-    if (!this.context) throw new Error("client is not booted");
-    return this.context;
+  private async findDownloadUrl(detailUrl: string): Promise<string | null> {
+    const { text } = await this.fetchText(detailUrl);
+    const $ = load(text);
+    const cand = $("a[href*='download'], button[data-href*='download']").first();
+    const href = cand.attr("href") ?? cand.attr("data-href");
+    return href ? toAbs(href) : null;
   }
+
+  private headers(): Record<string, string> {
+    const cookieHeader = this.cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+    return {
+      "user-agent": `dlsite-play-tui/${os.platform()}`,
+      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      ...(cookieHeader ? { cookie: cookieHeader } : {}),
+    };
+  }
+
+  private async fetchText(url: string): Promise<{ text: string; url: string }> {
+    const res = await fetch(url, {
+      headers: this.headers(),
+      redirect: "follow",
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${url}`);
+    const text = await res.text();
+    return { text, url: res.url };
+  }
+
+  private async loadCookieStore(): Promise<void> {
+    try {
+      const raw = await fs.readFile(this.cookieStorePath, "utf8");
+      const data = JSON.parse(raw) as CookieKV[];
+      this.cookies = dedupeCookies(data);
+    } catch {
+      this.cookies = [];
+    }
+  }
+
+  private async saveCookieStore(): Promise<void> {
+    await fs.writeFile(this.cookieStorePath, JSON.stringify(this.cookies, null, 2), "utf8");
+  }
+}
+
+function dedupeCookies(list: CookieKV[]): CookieKV[] {
+  const m = new Map<string, CookieKV>();
+  for (const c of list) {
+    if (!c?.name || !c?.value) continue;
+    m.set(c.name, c);
+  }
+  return Array.from(m.values());
+}
+
+function toAbs(url: string): string {
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("//")) return `https:${url}`;
+  if (url.startsWith("/")) return `${BASE}${url}`;
+  return `${BASE}/${url}`;
 }

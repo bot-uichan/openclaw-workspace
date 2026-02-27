@@ -11,8 +11,9 @@
   },
   "dependencies": {
     "blessed": "^0.1.81",
+    "cheerio": "^1.0.0",
     "clipboardy": "^4.0.0",
-    "playwright": "^1.51.0"
+    "open": "^10.1.0"
   },
   "devDependencies": {
     "@types/blessed": "^0.1.25",

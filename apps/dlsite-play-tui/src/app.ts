@@ -7,7 +7,6 @@ import type { OwnedWork, SearchResult } from "./types.js";
 
 const HOME = os.homedir();
 const stateDir = path.join(HOME, ".cache", "dlsite-play-tui");
-const userDataDir = path.join(stateDir, "browser-profile");
 const downloadDir = path.join(HOME, "Downloads", "dlsite");
 
 const screen = blessed.screen({
@@ -72,7 +71,7 @@ const status = blessed.box({
 type Row = { kind: "search" | "owned"; title: string; url: string; raw: SearchResult | OwnedWork };
 const rows: Row[] = [];
 
-const client = new DlsiteClient(userDataDir, downloadDir, false);
+const client = new DlsiteClient(stateDir, downloadDir);
 
 function info(msg: string): void {
   logBox.log(`{green-fg}${msg}{/green-fg}`);
@@ -140,12 +139,12 @@ async function doSearch(): Promise<void> {
 }
 
 async function setCookieInteractive(): Promise<void> {
-  const cookieHeader = await promptLine("Cookie文字列 (name=value; name2=value2)");
-  if (!cookieHeader) return;
+  const cookieInput = await promptLine("Cookie文字列 or JSON配列");
+  if (!cookieInput) return;
 
   setStatus("cookie登録中...");
-  const count = await client.setCookieHeader(cookieHeader);
-  info(`cookieを ${count} 件登録しました`);
+  const count = await client.setCookieInput(cookieInput);
+  info(`cookieを ${count} 件保存しました`);
 
   const logged = await client.ensureLogin();
   if (!logged) {
@@ -181,9 +180,24 @@ async function openSelectedForPlay(): Promise<void> {
   setStatus(`open: ${row.title}`);
 }
 
-async function downloadFromCurrentPage(): Promise<void> {
-  setStatus("ダウンロード中...");
-  const dl = await client.queueDownloadByOpenPage();
+async function downloadSelected(): Promise<void> {
+  const row = selected();
+  if (!row) {
+    warn("先に作品を選択してください");
+    return;
+  }
+
+  const work: OwnedWork =
+    row.kind === "owned"
+      ? (row.raw as OwnedWork)
+      : {
+          id: row.url.match(/(RJ\d+|BJ\d+|VJ\d+|[A-Z]{2}\d{4,})/i)?.[1]?.toUpperCase() ?? "UNKNOWN",
+          title: row.title,
+          detailUrl: row.url,
+        };
+
+  setStatus(`ダウンロード中: ${work.id}`);
+  const dl = await client.downloadWork(work);
   info(`保存完了: ${dl.suggestedName}`);
   info(`path: ${dl.savedTo}`);
   setStatus(`downloaded: ${dl.suggestedName}`);
@@ -216,7 +230,7 @@ async function commandPalette(): Promise<void> {
       break;
     }
     case "download":
-      await downloadFromCurrentPage();
+      await downloadSelected();
       break;
     case "play":
       await openSelectedForPlay();
@@ -242,7 +256,7 @@ screen.key(["c"], () => void setCookieInteractive().catch((e) => err(String(e)))
 screen.key(["s"], () => void doSearch().catch((e) => err(String(e))));
 screen.key(["l"], () => void loadLibrary().catch((e) => err(String(e))));
 screen.key(["p", "enter"], () => void openSelectedForPlay().catch((e) => err(String(e))));
-screen.key(["d"], () => void downloadFromCurrentPage().catch((e) => err(String(e))));
+screen.key(["d"], () => void downloadSelected().catch((e) => err(String(e))));
 screen.key(["y"], () => {
   const row = selected();
   if (!row) return;

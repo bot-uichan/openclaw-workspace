@@ -8,7 +8,7 @@ TypeScript で作った `play.dlsite.com` 操作用 TUI です。
 - 作品検索 (`s`)
 - ライブラリ一覧 (`l`)
 - 作品ページ/再生ページを開く (`p` / Enter)
-- 現在ページからダウンロード (`d`)
+- 選択作品をダウンロード (`d`)
 - URLコピー (`y`)
 - コマンドパレット (`/`)
 
@@ -17,19 +17,25 @@ TypeScript で作った `play.dlsite.com` 操作用 TUI です。
 ```bash
 cd apps/dlsite-play-tui
 npm i
-npx playwright install chromium
 npm run dev
 ```
 
-初回は Chromium が起動します。ログインはTUIからCookieを登録する方式です。
+この版は **Playwright非依存** です。ログインはTUIからCookieを登録する方式です。
 
-`c` キーで以下形式を貼り付けてください:
+`c` キーで以下いずれかを貼り付けてください:
 
 ```txt
 name=value; name2=value2; ...
 ```
 
-ログイン状態は `~/.cache/dlsite-play-tui/browser-profile` に保持されます。
+```json
+[
+  {"name":"cookieA","value":"xxx"},
+  {"name":"cookieB","value":"yyy"}
+]
+```
+
+Cookieは `~/.cache/dlsite-play-tui/cookies.json` に保持されます。
 
 ## キーバインド
 
@@ -37,7 +43,7 @@ name=value; name2=value2; ...
 - `s`: 検索
 - `l`: ライブラリ更新
 - `p` or `Enter`: 選択作品を開く/再生
-- `d`: ダウンロード実行（開いている作品ページのダウンロードボタンを押す）
+- `d`: 選択作品のダウンロード実行
 - `y`: 選択行の URL をコピー
 - `/`: コマンドパレット
 - `q`: 終了
