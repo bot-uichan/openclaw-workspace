@@ -6,6 +6,7 @@ import { Readable } from "node:stream";
 import os from "node:os";
 import { load } from "cheerio";
 import open from "open";
+import { chromium } from "playwright";
 import type { OwnedWork, SearchResult } from "./types.js";
 
 const BASE = "https://play.dlsite.com";
@@ -68,6 +69,37 @@ export class DlsiteClient {
 
     await this.saveCookieStore();
     return this.cookies.length;
+  }
+
+  async importCookiesViaPlaywright(maxWaitMs = 180_000): Promise<number> {
+    const userDataDir = path.join(this.stateDir, "pw-cookie-profile");
+    await fs.mkdir(userDataDir, { recursive: true });
+
+    const context = await chromium.launchPersistentContext(userDataDir, {
+      headless: false,
+      viewport: { width: 1366, height: 900 },
+    });
+
+    try {
+      const page = context.pages()[0] ?? (await context.newPage());
+      await page.goto(`${BASE}/library`, { waitUntil: "domcontentloaded" });
+
+      const started = Date.now();
+      while (Date.now() - started < maxWaitMs) {
+        await page.waitForTimeout(1000);
+        if (page.url().includes("/library") && !page.url().includes("/login")) {
+          const ck = await context.cookies(["https://play.dlsite.com", "https://www.dlsite.com"]);
+          const pairs = ck.map((c) => ({ name: c.name, value: c.value }));
+          this.cookies = dedupeCookies([...this.cookies, ...pairs]);
+          await this.saveCookieStore();
+          return this.cookies.length;
+        }
+      }
+
+      throw new Error("Playwrightでのログイン待機がタイムアウトしました");
+    } finally {
+      await context.close();
+    }
   }
 
   async search(keyword: string): Promise<SearchResult[]> {

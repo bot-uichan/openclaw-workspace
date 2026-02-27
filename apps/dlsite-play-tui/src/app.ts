@@ -23,7 +23,7 @@ const header = blessed.box({
   height: 1,
   tags: true,
   style: { fg: "black", bg: "cyan" },
-  content: " DLsite Play TUI | /:command  c:cookie  s:search  l:library  p:play  d:download  y:copy-url  q:quit",
+  content: " DLsite Play TUI | /:command  c:cookie  i:pw-cookie  s:search  l:library  p:play  d:download  y:copy-url  q:quit",
 });
 
 const body = blessed.listtable({
@@ -157,6 +157,22 @@ async function setCookieInteractive(): Promise<void> {
   await loadLibrary();
 }
 
+async function importCookieViaPlaywright(): Promise<void> {
+  setStatus("PlaywrightでCookie取得中...");
+  info("ブラウザが開いたらDLsiteにログインしてください");
+  const count = await client.importCookiesViaPlaywright();
+  info(`cookieを ${count} 件保存しました (Playwright)`);
+
+  const logged = await client.ensureLogin();
+  if (!logged) {
+    warn("ログイン判定NG。手動Cookie登録(c)も試してください");
+    return;
+  }
+
+  info("ログイン確認OK");
+  await loadLibrary();
+}
+
 async function loadLibrary(): Promise<void> {
   setStatus("ライブラリ読み込み中...");
   const works = await client.listOwnedWorks();
@@ -215,6 +231,10 @@ async function commandPalette(): Promise<void> {
     case "cookie":
       await setCookieInteractive();
       break;
+    case "pcookie":
+    case "cookie-pw":
+      await importCookieViaPlaywright();
+      break;
     case "library":
     case "ls":
       await loadLibrary();
@@ -253,6 +273,7 @@ screen.key(["q", "C-c"], async () => {
 
 screen.key(["/"], () => void commandPalette().catch((e) => err(String(e))));
 screen.key(["c"], () => void setCookieInteractive().catch((e) => err(String(e))));
+screen.key(["i"], () => void importCookieViaPlaywright().catch((e) => err(String(e))));
 screen.key(["s"], () => void doSearch().catch((e) => err(String(e))));
 screen.key(["l"], () => void loadLibrary().catch((e) => err(String(e))));
 screen.key(["p", "enter"], () => void openSelectedForPlay().catch((e) => err(String(e))));

@@ -5,6 +5,7 @@ TypeScript で作った `play.dlsite.com` 操作用 TUI です。
 ## 機能
 
 - Cookie登録ログイン (`c`)
+- PlaywrightでCookie自動取得 (`i`) ※Cookie取得専用
 - 作品検索 (`s`)
 - ライブラリ一覧 (`l`)
 - 作品ページ/再生ページを開く (`p` / Enter)
@@ -17,10 +18,12 @@ TypeScript で作った `play.dlsite.com` 操作用 TUI です。
 ```bash
 cd apps/dlsite-play-tui
 npm i
+npx playwright install chromium
 npm run dev
 ```
 
-この版は **Playwright非依存** です。ログインはTUIからCookieを登録する方式です。
+この版は、**PlaywrightはCookie取得専用**で使用します。
+検索/ライブラリ/ダウンロード情報の取得は内部API(HTTP)を直接使用します。
 
 `c` キーで以下いずれかを貼り付けてください:
 
@@ -39,13 +42,14 @@ Cookieは `~/.cache/dlsite-play-tui/cookies.json` に保持されます。
 
 ## キーバインド
 
-- `c`: Cookie登録
+- `c`: Cookie登録（手動貼り付け）
+- `i`: PlaywrightでCookie自動取得
 - `s`: 検索
 - `l`: ライブラリ更新
 - `p` or `Enter`: 選択作品を開く/再生
 - `d`: 選択作品のダウンロード実行
 - `y`: 選択行の URL をコピー
-- `/`: コマンドパレット
+- `/`: コマンドパレット (`pcookie` / `cookie-pw` も使用可能)
 - `q`: 終了
 
 ## 注意
