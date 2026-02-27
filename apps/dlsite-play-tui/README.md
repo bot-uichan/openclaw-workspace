@@ -4,6 +4,7 @@ TypeScript で作った `play.dlsite.com` 操作用 TUI です。
 
 ## 機能
 
+- Cookie登録ログイン (`c`)
 - 作品検索 (`s`)
 - ライブラリ一覧 (`l`)
 - 作品ページ/再生ページを開く (`p` / Enter)
@@ -20,10 +21,19 @@ npx playwright install chromium
 npm run dev
 ```
 
-初回は Chromium が起動します。ログイン状態は `~/.cache/dlsite-play-tui/browser-profile` に保持されます。
+初回は Chromium が起動します。ログインはTUIからCookieを登録する方式です。
+
+`c` キーで以下形式を貼り付けてください:
+
+```txt
+name=value; name2=value2; ...
+```
+
+ログイン状態は `~/.cache/dlsite-play-tui/browser-profile` に保持されます。
 
 ## キーバインド
 
+- `c`: Cookie登録
 - `s`: 検索
 - `l`: ライブラリ更新
 - `p` or `Enter`: 選択作品を開く/再生

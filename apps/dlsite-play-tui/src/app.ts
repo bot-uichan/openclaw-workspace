@@ -24,7 +24,7 @@ const header = blessed.box({
   height: 1,
   tags: true,
   style: { fg: "black", bg: "cyan" },
-  content: " DLsite Play TUI | /:command  s:search  l:library  p:play  d:download  y:copy-url  q:quit",
+  content: " DLsite Play TUI | /:command  c:cookie  s:search  l:library  p:play  d:download  y:copy-url  q:quit",
 });
 
 const body = blessed.listtable({
@@ -139,6 +139,25 @@ async function doSearch(): Promise<void> {
   setStatus(`検索結果 ${result.length}件`);
 }
 
+async function setCookieInteractive(): Promise<void> {
+  const cookieHeader = await promptLine("Cookie文字列 (name=value; name2=value2)");
+  if (!cookieHeader) return;
+
+  setStatus("cookie登録中...");
+  const count = await client.setCookieHeader(cookieHeader);
+  info(`cookieを ${count} 件登録しました`);
+
+  const logged = await client.ensureLogin();
+  if (!logged) {
+    warn("ログイン判定NG。Cookieの値を確認してください");
+    setStatus("cookie登録済み(未ログイン)");
+    return;
+  }
+
+  info("ログイン確認OK");
+  await loadLibrary();
+}
+
 async function loadLibrary(): Promise<void> {
   setStatus("ライブラリ読み込み中...");
   const works = await client.listOwnedWorks();
@@ -179,6 +198,9 @@ async function commandPalette(): Promise<void> {
     case "search":
       await doSearch();
       break;
+    case "cookie":
+      await setCookieInteractive();
+      break;
     case "library":
     case "ls":
       await loadLibrary();
@@ -216,6 +238,7 @@ screen.key(["q", "C-c"], async () => {
 });
 
 screen.key(["/"], () => void commandPalette().catch((e) => err(String(e))));
+screen.key(["c"], () => void setCookieInteractive().catch((e) => err(String(e))));
 screen.key(["s"], () => void doSearch().catch((e) => err(String(e))));
 screen.key(["l"], () => void loadLibrary().catch((e) => err(String(e))));
 screen.key(["p", "enter"], () => void openSelectedForPlay().catch((e) => err(String(e))));
@@ -233,7 +256,7 @@ screen.key(["y"], () => {
 
   const logged = await client.ensureLogin();
   if (!logged) {
-    warn("未ログインです。開いたブラウザでログインしてから [l] か [s] を押してください。");
+    warn("未ログインです。TUIで [c] を押してCookieを登録してください。");
   } else {
     info("ログイン確認OK");
     await loadLibrary().catch((e) => err(String(e)));

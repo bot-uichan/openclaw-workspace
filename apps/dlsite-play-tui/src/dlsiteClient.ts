@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { chromium, BrowserContext, Page } from "playwright";
+import { chromium, BrowserContext, Cookie, Page } from "playwright";
 import type { OwnedWork, SearchResult } from "./types.js";
 
 const BASE = "https://play.dlsite.com";
@@ -35,12 +35,50 @@ export class DlsiteClient {
 
   async ensureLogin(): Promise<boolean> {
     const page = this.mustPage();
-    await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
-    const hasAvatar = await page.locator('a[href*="/mypage"], img[alt*="avatar"]').first().isVisible().catch(() => false);
-    if (hasAvatar) return true;
+    await page.goto(`${BASE}/library`, { waitUntil: "domcontentloaded" });
 
-    await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" }).catch(() => undefined);
-    return false;
+    const url = page.url();
+    if (url.includes("/login")) {
+      return false;
+    }
+
+    const hasMyPageLink = await page.locator('a[href*="/mypage"], a[href*="/library"]').first().isVisible().catch(() => false);
+    return hasMyPageLink;
+  }
+
+  async setCookieHeader(raw: string): Promise<number> {
+    const context = this.mustContext();
+    const parsed = raw
+      .split(";")
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((pair) => {
+        const idx = pair.indexOf("=");
+        if (idx <= 0) return null;
+        const name = pair.slice(0, idx).trim();
+        const value = pair.slice(idx + 1).trim();
+        if (!name || !value) return null;
+        const c: Cookie = {
+          name,
+          value,
+          domain: ".dlsite.com",
+          path: "/",
+          httpOnly: false,
+          secure: true,
+          sameSite: "Lax",
+          expires: -1,
+        };
+        return c;
+      })
+      .filter((c): c is Cookie => c !== null);
+
+    if (parsed.length === 0) {
+      throw new Error("有効なCookieが見つかりませんでした");
+    }
+
+    await context.addCookies(parsed);
+    await this.mustPage().goto(`${BASE}/library`, { waitUntil: "domcontentloaded" });
+    return parsed.length;
   }
 
   async search(keyword: string): Promise<SearchResult[]> {
@@ -82,36 +120,55 @@ export class DlsiteClient {
   async listOwnedWorks(): Promise<OwnedWork[]> {
     const page = this.mustPage();
     await page.goto(`${BASE}/library`, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(800);
+
+    if (page.url().includes("/login")) {
+      throw new Error("未ログインです。cookieコマンドでCookieを登録してください。");
+    }
+
+    await page.waitForTimeout(1200);
+
+    for (let i = 0; i < 6; i++) {
+      await page.mouse.wheel(0, 3000);
+      await page.waitForTimeout(300);
+    }
 
     const works = await page.evaluate(() => {
-      const anchors = Array.from(document.querySelectorAll("a[href*='/work/'], a[href*='/product/']"));
+      const idPattern = /(RJ\d+|BJ\d+|VJ\d+|[A-Z]{2}\d{4,})/i;
+      const anchors = Array.from(document.querySelectorAll("a[href]"));
       const map = new Map<string, { id: string; title: string; detailUrl: string; playUrl?: string; downloadUrl?: string }>();
+
+      const ensure = (id: string, title: string, detailUrl: string) => {
+        if (!map.has(id)) {
+          map.set(id, { id, title: title || id, detailUrl });
+        }
+      };
 
       for (const a of anchors) {
         const href = (a as HTMLAnchorElement).href;
         if (!href) continue;
-        const m = href.match(/(RJ\d+|BJ\d+|VJ\d+|[A-Z]{2}\d+)/i);
-        const id = m?.[1] ?? href;
-        const title = a.getAttribute("aria-label")?.trim() || a.textContent?.trim() || id;
-        if (!map.has(id)) {
-          map.set(id, { id, title, detailUrl: href });
+
+        const m = href.match(idPattern);
+        if (!m) continue;
+
+        const id = m[1].toUpperCase();
+        const title =
+          a.getAttribute("aria-label")?.trim() ||
+          (a.querySelector("img") as HTMLImageElement | null)?.alt?.trim() ||
+          a.textContent?.replace(/\s+/g, " ").trim() ||
+          id;
+
+        if (href.includes("/work/") || href.includes("/product/") || href.includes("/announce/")) {
+          ensure(id, title, href);
+        } else if (href.includes("viewer") || href.includes("play")) {
+          ensure(id, title, `${location.origin}/work/${id}`);
+          map.get(id)!.playUrl = href;
+        } else if (href.includes("download")) {
+          ensure(id, title, `${location.origin}/work/${id}`);
+          map.get(id)!.downloadUrl = href;
         }
       }
 
-      const playLinks = Array.from(document.querySelectorAll("a[href*='viewer'], a[href*='play']"));
-      for (const a of playLinks) {
-        const href = (a as HTMLAnchorElement).href;
-        const txt = a.textContent ?? "";
-        if (!href || !txt) continue;
-
-        const nearest = a.closest("article, li, div");
-        const idMatch = nearest?.textContent?.match(/(RJ\d+|BJ\d+|VJ\d+|[A-Z]{2}\d+)/i)?.[1];
-        if (!idMatch || !map.has(idMatch)) continue;
-        map.get(idMatch)!.playUrl = href;
-      }
-
-      return Array.from(map.values()).slice(0, 200);
+      return Array.from(map.values()).slice(0, 500);
     });
 
     return works;
@@ -154,5 +211,10 @@ export class DlsiteClient {
   private mustPage(): Page {
     if (!this.page) throw new Error("client is not booted");
     return this.page;
+  }
+
+  private mustContext(): BrowserContext {
+    if (!this.context) throw new Error("client is not booted");
+    return this.context;
   }
 }
