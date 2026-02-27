@@ -189,7 +189,7 @@ export class DlsiteClient {
   }
 
   async getWorkTree(workId: string): Promise<WorkTreeEntry[]> {
-    const { signUrl, ziptree } = await this.getSignedZipTree(workId);
+    const { ziptree } = await this.getSignedZipTree(workId);
     const files = flattenZipTree(ziptree.tree ?? []);
 
     return files.map((f) => {
@@ -209,12 +209,24 @@ export class DlsiteClient {
   }
 
   async playTreeEntry(workId: string, entry: WorkTreeEntry): Promise<void> {
-    const { signUrl } = await this.getSignedZipTree(workId);
+    const { signUrl, signCookies } = await this.getSignedZipTree(workId);
     if (!entry.optimizedName) {
       throw new Error("このファイルはoptimized版が取得できません");
     }
+
+    // 署名Cookieが必要なURLなので、直接URLを開く前にCookieを付けてローカルへ退避して再生
     const url = `${signUrl}optimized/${entry.optimizedName}`;
-    await open(url);
+    const res = await fetch(url, { headers: this.headers(signCookies), redirect: "follow" });
+    if (!res.ok || !res.body) {
+      throw new Error(`再生ファイル取得に失敗: HTTP ${res.status}`);
+    }
+
+    const tmpDir = path.join(this.stateDir, "play-cache", workId);
+    await fs.mkdir(tmpDir, { recursive: true });
+    const out = path.join(tmpDir, sanitizePath(entry.path));
+    await fs.mkdir(path.dirname(out), { recursive: true });
+    await pipeline(Readable.fromWeb(res.body as never), createWriteStream(out));
+    await open(out);
   }
 
   async openForPlay(work: OwnedWork): Promise<void> {
@@ -226,7 +238,7 @@ export class DlsiteClient {
   }
 
   async downloadWork(work: OwnedWork): Promise<{ savedTo: string; suggestedName: string }> {
-    const { signUrl, ziptree } = await this.getSignedZipTree(work.id);
+    const { signUrl, signCookies, ziptree } = await this.getSignedZipTree(work.id);
     const files = flattenZipTree(ziptree.tree ?? []);
     if (files.length === 0) {
       throw new Error("ziptreeが空でした");
@@ -242,7 +254,7 @@ export class DlsiteClient {
       if (!optimizedName || typeof optimizedName !== "string") continue;
 
       const url = `${signUrl}optimized/${optimizedName}`;
-      const res = await fetch(url, { headers: this.headers(), redirect: "follow" });
+      const res = await fetch(url, { headers: this.headers(signCookies), redirect: "follow" });
       if (!res.ok || !res.body) continue;
 
       const local = path.join(outDir, sanitizePath(f.path));
@@ -258,17 +270,28 @@ export class DlsiteClient {
     return { savedTo: outDir, suggestedName: path.basename(outDir) };
   }
 
-  private async getSignedZipTree(workId: string): Promise<{ signUrl: string; ziptree: { tree?: unknown[]; playfile?: Record<string, any> } }> {
-    const sign = await this.fetchJson<{ url?: string }>(`https://play.dl.dlsite.com/api/v3/download/sign/cookie?workno=${encodeURIComponent(workId)}`);
+  private async getSignedZipTree(workId: string): Promise<{ signUrl: string; signCookies: CookieKV[]; ziptree: { tree?: unknown[]; playfile?: Record<string, any> } }> {
+    const sign = await this.fetchJson<{ url?: string; cookies?: Record<string, string> }>(
+      `https://play.dl.dlsite.com/api/v3/download/sign/cookie?workno=${encodeURIComponent(workId)}`,
+    );
     if (!sign?.url) {
       throw new Error("download/sign APIからURL取得に失敗しました");
     }
-    const ziptree = await this.fetchJson<{ tree?: unknown[]; playfile?: Record<string, any> }>(`${sign.url}ziptree.json`);
-    return { signUrl: sign.url, ziptree };
+
+    const signCookies: CookieKV[] = Object.entries(sign.cookies ?? {})
+      .filter(([, v]) => typeof v === "string" && v.length > 0)
+      .map(([name, value]) => ({ name, value }));
+
+    const ziptree = await this.fetchJson<{ tree?: unknown[]; playfile?: Record<string, any> }>(
+      `${sign.url}ziptree.json`,
+      { headers: this.headers(signCookies) },
+    );
+    return { signUrl: sign.url, signCookies, ziptree };
   }
 
-  private headers(): Record<string, string> {
-    const cookieHeader = this.cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+  private headers(extraCookies: CookieKV[] = []): Record<string, string> {
+    const merged = dedupeCookies([...this.cookies, ...extraCookies]);
+    const cookieHeader = merged.map((c) => `${c.name}=${c.value}`).join("; ");
     return {
       "user-agent": `dlsite-play-tui/${os.platform()}`,
       accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
