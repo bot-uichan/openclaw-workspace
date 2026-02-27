@@ -22,7 +22,9 @@ node skills/tavily-search/scripts/tavily-search.mjs "BTC ETF flow today impact" 
 ```
 
 2. Check live market screen in Chromium/browser (mandatory).
-3. Make a discretionary decision: `HOLD | BUY | SELL | SELL_ALL`.
+3. Make a discretionary decision with aggressive bias: `HOLD | BUY | SELL | SELL_ALL`.
+   - Prefer action over repeated HOLD when conviction is moderate or higher.
+   - Use larger position sizing when conviction exists (guide: BUY 40-70%, SELL 40-100%).
 4. Execute with a required reason (mandatory):
 
 ```bash
@@ -30,10 +32,10 @@ node skills/tavily-search/scripts/tavily-search.mjs "BTC ETF flow today impact" 
 node scripts/demo-trade.js --action HOLD --reason "今回の判断理由"
 
 # BUY (example)
-node scripts/demo-trade.js --action BUY --symbol SOLUSDC --pct 30 --reason "今回の判断理由"
+node scripts/demo-trade.js --action BUY --symbol SOLUSDC --pct 50 --reason "今回の判断理由"
 
 # SELL (example)
-node scripts/demo-trade.js --action SELL --symbol SOLUSDC --pct 50 --reason "今回の判断理由"
+node scripts/demo-trade.js --action SELL --symbol SOLUSDC --pct 60 --reason "今回の判断理由"
 
 # SELL_ALL
 node scripts/demo-trade.js --action SELL_ALL --reason "今回の判断理由"
