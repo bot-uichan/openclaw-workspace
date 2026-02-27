@@ -7,7 +7,7 @@ import os from "node:os";
 import { load } from "cheerio";
 import open from "open";
 import { chromium } from "playwright";
-import type { OwnedWork, SearchResult } from "./types.js";
+import type { OwnedWork, SearchResult, WorkTreeEntry } from "./types.js";
 
 const BASE = "https://play.dlsite.com";
 
@@ -172,16 +172,49 @@ export class DlsiteClient {
           (typeof w.work_name === "string" && w.work_name) ||
           id;
 
+        const wf = w.work_files as Record<string, unknown> | undefined;
+        const thumbnail = typeof wf?.main === "string" ? toAbs(wf.main) : undefined;
+
         works.push({
           id,
           title,
           detailUrl: `https://www.dlsite.com/maniax/work/=/product_id/${id}.html`,
           playUrl: `https://play.dlsite.com/work/${id}`,
+          thumbnail,
         });
       }
     }
 
     return works;
+  }
+
+  async getWorkTree(workId: string): Promise<WorkTreeEntry[]> {
+    const { signUrl, ziptree } = await this.getSignedZipTree(workId);
+    const files = flattenZipTree(ziptree.tree ?? []);
+
+    return files.map((f) => {
+      const meta = ziptree.playfile?.[f.hashname];
+      const optimizedName = meta?.files?.optimized?.name ?? meta?.optimized?.name ?? meta?.image?.optimized?.name;
+      const type = typeof meta?.type === "string" ? meta.type : detectTypeFromPath(f.path);
+      const isPlayable = /audio|video|image|text|pdf/i.test(type) || /\.(mp3|m4a|wav|ogg|flac|mp4|webm|m3u8|jpg|jpeg|png|webp|gif|txt|pdf)$/i.test(f.path);
+
+      return {
+        hashname: f.hashname,
+        path: f.path,
+        optimizedName: typeof optimizedName === "string" ? optimizedName : undefined,
+        type,
+        isPlayable,
+      };
+    });
+  }
+
+  async playTreeEntry(workId: string, entry: WorkTreeEntry): Promise<void> {
+    const { signUrl } = await this.getSignedZipTree(workId);
+    if (!entry.optimizedName) {
+      throw new Error("このファイルはoptimized版が取得できません");
+    }
+    const url = `${signUrl}optimized/${entry.optimizedName}`;
+    await open(url);
   }
 
   async openForPlay(work: OwnedWork): Promise<void> {
@@ -193,12 +226,7 @@ export class DlsiteClient {
   }
 
   async downloadWork(work: OwnedWork): Promise<{ savedTo: string; suggestedName: string }> {
-    const sign = await this.fetchJson<{ url?: string }>(`https://play.dl.dlsite.com/api/v3/download/sign/cookie?workno=${encodeURIComponent(work.id)}`);
-    if (!sign?.url) {
-      throw new Error("download/sign APIからURL取得に失敗しました");
-    }
-
-    const ziptree = await this.fetchJson<{ tree?: unknown[]; playfile?: Record<string, any> }>(`${sign.url}ziptree.json`);
+    const { signUrl, ziptree } = await this.getSignedZipTree(work.id);
     const files = flattenZipTree(ziptree.tree ?? []);
     if (files.length === 0) {
       throw new Error("ziptreeが空でした");
@@ -213,7 +241,7 @@ export class DlsiteClient {
       const optimizedName = meta?.files?.optimized?.name ?? meta?.optimized?.name ?? meta?.image?.optimized?.name;
       if (!optimizedName || typeof optimizedName !== "string") continue;
 
-      const url = `${sign.url}optimized/${optimizedName}`;
+      const url = `${signUrl}optimized/${optimizedName}`;
       const res = await fetch(url, { headers: this.headers(), redirect: "follow" });
       if (!res.ok || !res.body) continue;
 
@@ -228,6 +256,15 @@ export class DlsiteClient {
     }
 
     return { savedTo: outDir, suggestedName: path.basename(outDir) };
+  }
+
+  private async getSignedZipTree(workId: string): Promise<{ signUrl: string; ziptree: { tree?: unknown[]; playfile?: Record<string, any> } }> {
+    const sign = await this.fetchJson<{ url?: string }>(`https://play.dl.dlsite.com/api/v3/download/sign/cookie?workno=${encodeURIComponent(workId)}`);
+    if (!sign?.url) {
+      throw new Error("download/sign APIからURL取得に失敗しました");
+    }
+    const ziptree = await this.fetchJson<{ tree?: unknown[]; playfile?: Record<string, any> }>(`${sign.url}ziptree.json`);
+    return { signUrl: sign.url, ziptree };
   }
 
   private headers(): Record<string, string> {
@@ -317,6 +354,16 @@ function sanitizePath(p: string): string {
 
 function dedupe(list: string[]): string[] {
   return Array.from(new Set(list));
+}
+
+function detectTypeFromPath(p: string): string {
+  const lower = p.toLowerCase();
+  if (/\.(mp3|wav|ogg|flac|m4a)$/.test(lower)) return "audio";
+  if (/\.(mp4|webm|m3u8)$/.test(lower)) return "video";
+  if (/\.(jpg|jpeg|png|webp|gif|bmp)$/.test(lower)) return "image";
+  if (/\.(txt|md|json|csv)$/.test(lower)) return "text";
+  if (/\.pdf$/.test(lower)) return "pdf";
+  return "file";
 }
 
 function dedupeCookies(list: CookieKV[]): CookieKV[] {

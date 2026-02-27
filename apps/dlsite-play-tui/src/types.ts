@@ -11,6 +11,15 @@ export type OwnedWork = {
   detailUrl: string;
   downloadUrl?: string;
   playUrl?: string;
+  thumbnail?: string;
+};
+
+export type WorkTreeEntry = {
+  hashname: string;
+  path: string;
+  optimizedName?: string;
+  type?: string;
+  isPlayable: boolean;
 };
 
 export type DownloadTask = {
