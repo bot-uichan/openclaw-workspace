@@ -1,19 +1,16 @@
 # dlsite-play-tui
 
-TypeScript製 `play.dlsite.com` 操作用TUI。
+DLsite PlayをTypeScript TUIで操作します（ブラウザ遷移なし運用）。
 
-## 機能
-
+## できること
 - ライブラリ取得（内部API v3）
 - 検索
-- 作品ごとのファイルtree表示（TUI内）
-- tree選択ファイルの再生/表示（TUI操作起点）
-- 選択作品の一括ダウンロード
-- 右側固定パネルでサムネイル確認（`chafa` があれば画像プレビュー）
-- Cookie登録（手動 / JSON / Playwright自動取得）
+- ツリー表示（フォルダ展開/折りたたみ）
+- 音声ファイルをキューに積んで連続再生
+- 作品の一括ダウンロード
+- 右上固定パネルでサムネ表示
 
 ## セットアップ
-
 ```bash
 cd apps/dlsite-play-tui
 npm i
@@ -21,30 +18,29 @@ npx playwright install chromium
 npm run dev
 ```
 
-## キーバインド
-
-- `c`: Cookie手動登録（`name=value; ...` または JSON配列）
+## 操作
+- `TAB`: フォーカス切替（Library / Tree / Queue）
+- `c`: Cookie手動登録（header または JSON配列）
 - `i`: PlaywrightでCookie自動取得（Cookie取得専用）
 - `s`: 検索
 - `l`: ライブラリ更新
-- `t`: 選択作品のfile tree取得
-- `r`: treeで選んだファイルを再生/表示
-- `p` / `Enter`: 作品ページを開く
+- `t`: 選択作品のtree取得
+- `Enter` / `→`: Treeのフォルダ展開/折りたたみ、ファイルはキュー追加
+- `←`: フォルダを閉じる
+- `a`: 選択音声をキュー追加
+- `A`: 選択フォルダ配下の音声を全キュー追加
+- `n`: 次へ（再生中ならスキップ）
 - `d`: 選択作品をダウンロード
-- `y`: 選択作品URLをコピー
-- `/`: コマンドパレット
 - `q`: 終了
 
-## 内部API
+## 再生
+- `mpv` を使用（`--no-video`）
+- 動画は現状対象外（要望どおり一旦保留）
 
+## 内部API
 - `GET https://play.dlsite.com/api/v3/content/count?last=0`
 - `GET https://play.dlsite.com/api/v3/content/sales?last=0`
 - `POST https://play.dlsite.com/api/v3/content/works`
 - `GET https://play.dl.dlsite.com/api/v3/download/sign/cookie?workno=RJ...`
 - `GET {sign.url}ziptree.json`
 - `GET {sign.url}optimized/{file}`
-
-## 備考
-
-- サムネイルの画像描画は `chafa` があると見やすいです（無い場合はURL表示）。
-- 再生/表示はOSの既定アプリで開きます。

@@ -16,11 +16,27 @@ export type OwnedWork = {
 
 export type WorkTreeEntry = {
   hashname: string;
+  name: string;
   path: string;
   optimizedName?: string;
   type?: string;
   isPlayable: boolean;
+  isAudio: boolean;
 };
+
+export type WorkTreeNode =
+  | {
+      kind: "folder";
+      name: string;
+      path: string;
+      children: WorkTreeNode[];
+    }
+  | {
+      kind: "file";
+      name: string;
+      path: string;
+      entry: WorkTreeEntry;
+    };
 
 export type DownloadTask = {
   workId: string;
