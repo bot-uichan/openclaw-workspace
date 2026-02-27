@@ -156,14 +156,20 @@ async function playNextFromQueue(): Promise<void> {
   queueRefresh();
   setStatus(`再生中: ${item.entry.path}`);
 
-  const local = await client.fetchPlayableToCache(item.workId, item.entry);
-  const proc = spawn("ffplay", ["-nodisp", "-autoexit", "-loglevel", "warning", local], { stdio: "ignore" });
-  player = proc;
-  proc.on("exit", () => {
+  try {
+    const local = await client.fetchPlayableToCache(item.workId, item.entry);
+    const proc = spawn("ffplay", ["-nodisp", "-autoexit", "-loglevel", "warning", local], { stdio: "ignore" });
+    player = proc;
+    proc.on("exit", () => {
+      player = null;
+      setStatus("再生終了");
+      void playNextFromQueue();
+    });
+  } catch (e) {
+    err(`再生スキップ: ${String(e)}`);
     player = null;
-    setStatus("再生終了");
     void playNextFromQueue();
-  });
+  }
 }
 
 function enqueueEntry(workId: string, title: string, entry: WorkTreeEntry): void {

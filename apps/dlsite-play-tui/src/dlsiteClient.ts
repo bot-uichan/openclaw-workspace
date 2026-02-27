@@ -156,13 +156,30 @@ export class DlsiteClient {
 
   async fetchPlayableToCache(workId: string, entry: WorkTreeEntry): Promise<string> {
     const { signUrl, signCookies } = await this.getSignedZipTree(workId);
-    if (!entry.optimizedName) throw new Error("optimized版がありません");
-    const url = `${signUrl}optimized/${entry.optimizedName}`;
-    const res = await fetch(url, { headers: this.headers(signCookies), redirect: "follow" });
-    if (!res.ok || !res.body) throw new Error(`ファイル取得失敗: HTTP ${res.status}`);
+    if (!entry.optimizedName) throw new Error("再生用ファイル名がありません");
+
+    const candidates = [
+      `${signUrl}optimized/${entry.optimizedName}`,
+      `${signUrl}files/${entry.optimizedName}`,
+      `${signUrl}${entry.optimizedName}`,
+    ];
+
+    let body: ReadableStream<Uint8Array> | null = null;
+    let lastStatus = 0;
+    for (const url of candidates) {
+      const res = await fetch(url, { headers: this.headers(signCookies), redirect: "follow" });
+      lastStatus = res.status;
+      if (res.ok && res.body) {
+        body = res.body as ReadableStream<Uint8Array>;
+        break;
+      }
+    }
+
+    if (!body) throw new Error(`再生ファイル取得失敗: HTTP ${lastStatus}`);
+
     const out = path.join(this.stateDir, "play-cache", workId, sanitizePath(entry.path));
     await fs.mkdir(path.dirname(out), { recursive: true });
-    await pipeline(Readable.fromWeb(res.body as never), createWriteStream(out));
+    await pipeline(Readable.fromWeb(body as never), createWriteStream(out));
     return out;
   }
 
@@ -248,7 +265,12 @@ function buildTree(nodes: unknown[], playfiles: Record<string, any>, parent = ""
     if (type === "file") {
       const hashname = typeof obj.hashname === "string" ? obj.hashname : "";
       const meta = playfiles[hashname];
-      const optimizedName = meta?.files?.optimized?.name ?? meta?.optimized?.name ?? meta?.image?.optimized?.name;
+      const optimizedName =
+        meta?.files?.optimized?.name ??
+        meta?.optimized?.name ??
+        meta?.image?.optimized?.name ??
+        meta?.files?.files?.name ??
+        meta?.files?.name;
       const mediaType = typeof meta?.type === "string" ? meta.type : detectTypeFromPath(cur);
       const isAudio = /audio/i.test(mediaType) || /\.(mp3|m4a|wav|ogg|flac)$/i.test(cur);
       const entry: WorkTreeEntry = {
