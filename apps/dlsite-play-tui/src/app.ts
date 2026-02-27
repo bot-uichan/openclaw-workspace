@@ -13,13 +13,14 @@ const stateDir = path.join(HOME, ".cache", "dlsite-play-tui");
 const downloadDir = path.join(HOME, "Downloads", "dlsite");
 
 const screen = blessed.screen({ smartCSR: true, title: "DLsite Play TUI", fullUnicode: true });
-const header = blessed.box({ parent: screen, top: 0, left: 0, width: "100%", height: 1, style: { fg: "black", bg: "cyan" }, content: " DLsite TUI | TAB:focus c:cookie i:pw s:search l:library t:tree ENTER:expand/play a:queue A:queue-folder n:next d:download y:copy q:quit" });
+const header = blessed.box({ parent: screen, top: 0, left: 0, width: "100%", height: 1, style: { fg: "black", bg: "cyan" }, content: " DLsite TUI | TAB:focus c:cookie i:pw s:search l:library ENTER:load/open a:queue A:queue-folder n:next d:download y:copy q:quit" });
 
 const library = blessed.listtable({ parent: screen, top: 1, left: 0, width: "48%", height: "62%", border: "line", keys: true, vi: true, mouse: true, style: { header: { fg: "yellow", bold: true }, cell: { selected: { bg: "blue" } } }, data: [["Type", "Title", "ID"]] });
 const tree = blessed.list({ parent: screen, top: 1, left: "48%", width: "34%", height: "62%", border: "line", label: " Tree ", keys: true, vi: true, mouse: true, items: ["(load with t)"] });
 const thumb = blessed.box({ parent: screen, top: 1, left: "82%", width: "18%", height: "31%", border: "line", label: " Thumb ", tags: true, content: "(none)" });
 const queue = blessed.list({ parent: screen, top: "32%", left: "82%", width: "18%", height: "31%", border: "line", label: " Queue ", keys: true, vi: true, mouse: true, items: ["(empty)"] });
-const logs = blessed.log({ parent: screen, top: "63%", left: 0, width: "100%", height: "34%-2", border: "line", label: " Logs ", tags: true });
+const selectionInfo = blessed.box({ parent: screen, top: "63%", left: 0, width: "100%", height: 3, border: "line", tags: true, content: " {cyan-fg}Selection{/cyan-fg}: -" });
+const logs = blessed.log({ parent: screen, top: "66%", left: 0, width: "100%", height: "31%-2", border: "line", label: " Logs ", tags: true });
 const status = blessed.box({ parent: screen, bottom: 0, left: 0, width: "100%", height: 3, border: "line", content: " Ready" });
 
 type Row = { kind: "search" | "owned"; title: string; url: string; raw: SearchResult | OwnedWork };
@@ -40,6 +41,27 @@ const info = (m: string) => { logs.log(`{green-fg}${m}{/green-fg}`); screen.rend
 const warn = (m: string) => { logs.log(`{yellow-fg}${m}{/yellow-fg}`); screen.render(); };
 const err = (m: string) => { logs.log(`{red-fg}${m}{/red-fg}`); screen.render(); };
 const setStatus = (m: string) => { status.setContent(` ${m}`); screen.render(); };
+
+function updateFocusDecor(): void {
+  const f = screen.focused;
+  library.style.border = { fg: f === library ? "cyan" : "gray" };
+  tree.style.border = { fg: f === tree ? "cyan" : "gray" };
+  queue.style.border = { fg: f === queue ? "cyan" : "gray" };
+}
+
+function updateSelectionInfo(): void {
+  if (screen.focused === library) {
+    const r = currentRow();
+    selectionInfo.setContent(` {cyan-fg}Library{/cyan-fg}: ${r ? `${r.title} (${currentWorkId() ?? "?"})` : "-"}`);
+  } else if (screen.focused === tree) {
+    const tr = currentTreeRow();
+    selectionInfo.setContent(` {cyan-fg}Tree{/cyan-fg}: ${tr ? tr.node.path : "-"}`);
+  } else {
+    const idx = ((queue as unknown as { selected: number }).selected ?? 0);
+    selectionInfo.setContent(` {cyan-fg}Queue{/cyan-fg}: ${audioQueue[idx]?.entry.path ?? "-"}`);
+  }
+  screen.render();
+}
 
 function currentRow(): Row | undefined {
   const idx = ((library as unknown as { selected: number }).selected ?? 0) - 1;
@@ -97,8 +119,10 @@ function rebuildTreeList(): void {
     }
   };
   walk(treeRoots, 0);
+  const prev = ((tree as unknown as { selected: number }).selected ?? 0);
   tree.setItems(treeFlat.map((r) => `${"  ".repeat(r.depth)}${r.node.kind === "folder" ? (r.expanded ? "▾ " : "▸ ") : "  ♪ "}${r.node.name}`));
-  if (treeFlat.length > 0) tree.select(0);
+  if (treeFlat.length > 0) tree.select(Math.min(prev, treeFlat.length - 1));
+  updateSelectionInfo();
   screen.render();
 }
 
@@ -108,11 +132,14 @@ function currentTreeRow(): FlatTreeRow | undefined {
 }
 
 function queueRefresh(): void {
+  const prev = ((queue as unknown as { selected: number }).selected ?? 0);
   queue.setItems(audioQueue.length ? audioQueue.map((q, i) => `${i + 1}. ${q.entry.path}`) : ["(empty)"]);
+  if (audioQueue.length > 0) queue.select(Math.min(prev, audioQueue.length - 1));
+  updateSelectionInfo();
   screen.render();
 }
 
-async function ensurePlay(bin = "mpv"): Promise<boolean> {
+async function ensurePlay(bin = "ffplay"): Promise<boolean> {
   try {
     await execFileAsync("bash", ["-lc", `command -v ${bin}`]);
     return true;
@@ -124,13 +151,13 @@ async function ensurePlay(bin = "mpv"): Promise<boolean> {
 
 async function playNextFromQueue(): Promise<void> {
   if (player || audioQueue.length === 0) return;
-  if (!(await ensurePlay("mpv"))) return;
+  if (!(await ensurePlay("ffplay"))) return;
   const item = audioQueue.shift()!;
   queueRefresh();
   setStatus(`再生中: ${item.entry.path}`);
 
   const local = await client.fetchPlayableToCache(item.workId, item.entry);
-  const proc = spawn("mpv", ["--no-video", "--really-quiet", local], { stdio: "ignore" });
+  const proc = spawn("ffplay", ["-nodisp", "-autoexit", "-loglevel", "warning", local], { stdio: "ignore" });
   player = proc;
   proc.on("exit", () => {
     player = null;
@@ -220,12 +247,17 @@ async function doDownload(): Promise<void> {
 library.on("select", async (_, idx) => {
   if (idx <= 0) return;
   await renderThumb(rows[idx - 1]);
+  updateSelectionInfo();
 });
+tree.on("select", () => updateSelectionInfo());
+queue.on("select", () => updateSelectionInfo());
 
 screen.key(["tab"], () => {
   if (screen.focused === library) tree.focus();
   else if (screen.focused === tree) queue.focus();
   else library.focus();
+  updateFocusDecor();
+  updateSelectionInfo();
 });
 screen.key(["q", "C-c"], async () => {
   player?.kill("SIGTERM");
@@ -249,7 +281,25 @@ screen.key(["y"], () => {
   clipboard.writeSync(r.url);
   info(`copied: ${r.url}`);
 });
-screen.key(["enter", "right", "l"], () => {
+screen.key(["enter"], () => {
+  if (screen.focused === library) {
+    void doLoadTree().then(() => {
+      tree.focus();
+      updateFocusDecor();
+      updateSelectionInfo();
+    }).catch((e) => err(String(e)));
+    return;
+  }
+  if (screen.focused === tree) {
+    toggleTreeRow();
+    return;
+  }
+  if (screen.focused === queue) {
+    if (player) player.kill("SIGTERM");
+    else void playNextFromQueue();
+  }
+});
+screen.key(["right", "l"], () => {
   if (screen.focused === tree) toggleTreeRow();
 });
 screen.key(["left", "h"], () => {
@@ -281,5 +331,7 @@ screen.key(["n"], () => {
   if (await client.ensureLogin()) await doLibrary();
   else warn("未ログイン: c か i でCookie登録");
   library.focus();
+  updateFocusDecor();
+  updateSelectionInfo();
   screen.render();
 })().catch((e) => err(String(e)));

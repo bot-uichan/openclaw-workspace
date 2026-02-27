@@ -24,8 +24,9 @@ npm run dev
 - `i`: PlaywrightでCookie自動取得（Cookie取得専用）
 - `s`: 検索
 - `l`: ライブラリ更新
-- `t`: 選択作品のtree取得
-- `Enter` / `→`: Treeのフォルダ展開/折りたたみ、ファイルはキュー追加
+- `Enter` (Library): 選択作品のtree取得してTreeへフォーカス移動
+- `t`: tree再取得（ショートカット）
+- `Enter` / `→` (Tree): フォルダ展開/折りたたみ、ファイルはキュー追加
 - `←`: フォルダを閉じる
 - `a`: 選択音声をキュー追加
 - `A`: 選択フォルダ配下の音声を全キュー追加
@@ -34,7 +35,7 @@ npm run dev
 - `q`: 終了
 
 ## 再生
-- `mpv` を使用（`--no-video`）
+- `ffplay`（ffmpeg同梱）を使用（`-nodisp -autoexit`）
 - 動画は現状対象外（要望どおり一旦保留）
 
 ## 内部API
