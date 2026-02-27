@@ -193,8 +193,8 @@ export class DlsiteClient {
     let downloaded = 0;
     for (const f of files) {
       const meta = ziptree.playfile?.[f.hashname];
-      const optimizedName = meta?.files?.optimized?.name ?? meta?.optimized?.name ?? meta?.image?.optimized?.name;
-      if (!optimizedName || typeof optimizedName !== "string") continue;
+      const optimizedName = resolvePlayableName(meta);
+      if (!optimizedName) continue;
       const res = await fetch(`${signUrl}optimized/${optimizedName}`, { headers: this.headers(signCookies), redirect: "follow" });
       if (!res.ok || !res.body) continue;
       const local = path.join(outDir, sanitizePath(f.path));
@@ -265,12 +265,7 @@ function buildTree(nodes: unknown[], playfiles: Record<string, any>, parent = ""
     if (type === "file") {
       const hashname = typeof obj.hashname === "string" ? obj.hashname : "";
       const meta = playfiles[hashname];
-      const optimizedName =
-        meta?.files?.optimized?.name ??
-        meta?.optimized?.name ??
-        meta?.image?.optimized?.name ??
-        meta?.files?.files?.name ??
-        meta?.files?.name;
+      const optimizedName = resolvePlayableName(meta);
       const mediaType = typeof meta?.type === "string" ? meta.type : detectTypeFromPath(cur);
       const isAudio = /audio/i.test(mediaType) || /\.(mp3|m4a|wav|ogg|flac)$/i.test(cur);
       const entry: WorkTreeEntry = {
@@ -317,6 +312,35 @@ function sanitizePath(p: string): string {
 function dedupe(list: string[]): string[] {
   return Array.from(new Set(list));
 }
+function resolvePlayableName(meta: any): string | undefined {
+  if (!meta || typeof meta !== "object") return undefined;
+
+  const direct =
+    meta?.files?.optimized?.name ??
+    meta?.optimized?.name ??
+    meta?.image?.optimized?.name ??
+    meta?.audio?.optimized?.name ??
+    meta?.video?.optimized?.name ??
+    meta?.text?.optimized?.name ??
+    meta?.files?.files?.name ??
+    meta?.files?.name;
+  if (typeof direct === "string" && direct.length > 0) return direct;
+
+  const t = typeof meta.type === "string" ? meta.type : "";
+  if (t && meta[t]) {
+    const byType = meta[t]?.optimized?.name ?? meta[t]?.files?.name;
+    if (typeof byType === "string" && byType.length > 0) return byType;
+  }
+
+  for (const v of Object.values(meta as Record<string, any>)) {
+    if (!v || typeof v !== "object") continue;
+    const name = v?.optimized?.name ?? v?.files?.name;
+    if (typeof name === "string" && name.length > 0) return name;
+  }
+
+  return undefined;
+}
+
 function detectTypeFromPath(p: string): string {
   const lower = p.toLowerCase();
   if (/\.(mp3|wav|ogg|flac|m4a)$/.test(lower)) return "audio";
