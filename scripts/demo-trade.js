@@ -5,6 +5,7 @@ const path = require('path');
 const STATE_PATH = path.join(__dirname, '..', 'memory', 'demo-trade-wallet.json');
 const LOG_PATH = path.join(__dirname, '..', 'memory', 'demo-trade-log.jsonl');
 const BINANCE_SYMBOLS = ['BTCUSDC', 'ETHUSDC', 'SOLUSDC'];
+const DEX_CHAIN_ALLOWLIST = new Set(['ethereum', 'bsc', 'base', 'arbitrum', 'optimism', 'polygon', 'avalanche', 'solana']);
 
 function ensureDir(filePath) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -27,12 +28,48 @@ function toNum(v, d = null) {
   return Number.isFinite(n) ? n : d;
 }
 
+function normalizeSymbol(input) {
+  if (!input) return null;
+  const s = String(input).trim();
+  if (/^PUMP:/i.test(s)) return `PUMP:${s.split(':')[1] || ''}`;
+  if (/^DEX:/i.test(s)) {
+    const parts = s.split(':');
+    return `DEX:${(parts[1] || '').toLowerCase()}:${parts.slice(2).join(':')}`;
+  }
+  return s.toUpperCase();
+}
+
 function isPumpSymbol(symbol) {
   return /^PUMP:[1-9A-HJ-NP-Za-km-z]{32,44}$/i.test(symbol || '');
 }
 
-function getPumpMint(symbol) {
-  return String(symbol).split(':')[1];
+function parseDexSymbol(symbol) {
+  const s = String(symbol || '').trim();
+
+  // Backward compatibility: PUMP:<solana_mint>
+  const p = s.match(/^PUMP:([1-9A-HJ-NP-Za-km-z]{32,44})$/i);
+  if (p) {
+    return { chainId: 'solana', tokenAddress: p[1] };
+  }
+
+  // Generic format: DEX:<chainId>:<tokenAddress>
+  const m = s.match(/^DEX:([A-Z0-9_-]{2,20}):([A-Za-z0-9]{20,80})$/i);
+  if (!m) return null;
+
+  const chainId = m[1].toLowerCase();
+  const tokenAddress = m[2];
+  if (!DEX_CHAIN_ALLOWLIST.has(chainId)) {
+    throw new Error(`Unsupported DEX chain: ${chainId}. Allowed: ${[...DEX_CHAIN_ALLOWLIST].join(', ')}`);
+  }
+  return { chainId, tokenAddress };
+}
+
+function isDexSymbol(symbol) {
+  try {
+    return !!parseDexSymbol(symbol);
+  } catch {
+    return false;
+  }
 }
 
 function loadState() {
@@ -78,20 +115,23 @@ async function fetchBinanceTickers(symbols) {
   return map;
 }
 
-async function fetchPumpTicker(symbol) {
-  const mint = getPumpMint(symbol);
-  const url = `https://api.dexscreener.com/latest/dex/tokens/${mint}`;
-  const res = await fetch(url, { headers: { 'User-Agent': 'openclaw-demo-trade/3.0' } });
-  if (!res.ok) throw new Error(`Failed to fetch DexScreener token ${mint}: ${res.status}`);
+async function fetchDexTicker(symbol) {
+  const parsed = parseDexSymbol(symbol);
+  if (!parsed) throw new Error(`Invalid DEX symbol: ${symbol}`);
+
+  const { chainId, tokenAddress } = parsed;
+  const url = `https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`;
+  const res = await fetch(url, { headers: { 'User-Agent': 'openclaw-demo-trade/3.1' } });
+  if (!res.ok) throw new Error(`Failed to fetch DexScreener token ${tokenAddress}: ${res.status}`);
   const data = await res.json();
   const pairs = Array.isArray(data.pairs) ? data.pairs : [];
   if (!pairs.length) throw new Error(`No DexScreener pairs for ${symbol}`);
 
   const ranked = pairs
-    .filter((p) => Number(p?.priceUsd) > 0)
+    .filter((p) => Number(p?.priceUsd) > 0 && String(p?.chainId || '').toLowerCase() === chainId)
     .sort((a, b) => Number(b?.liquidity?.usd || 0) - Number(a?.liquidity?.usd || 0));
 
-  if (!ranked.length) throw new Error(`No USD-priced DexScreener pairs for ${symbol}`);
+  if (!ranked.length) throw new Error(`No ${chainId} USD-priced DexScreener pairs for ${symbol}`);
   const best = ranked[0];
 
   return {
@@ -101,7 +141,7 @@ async function fetchPumpTicker(symbol) {
     pair: best.pairAddress,
     dexId: best.dexId,
     chainId: best.chainId,
-    tokenAddress: mint,
+    tokenAddress,
   };
 }
 
@@ -112,11 +152,11 @@ async function fetchTickers(state, requestedSymbol) {
 
   const all = [...universe];
   const binanceSymbols = all.filter((s) => BINANCE_SYMBOLS.includes(s));
-  const pumpSymbols = all.filter((s) => isPumpSymbol(s));
+  const dexSymbols = all.filter((s) => isDexSymbol(s));
 
   const out = await fetchBinanceTickers(binanceSymbols);
-  for (const s of pumpSymbols) {
-    out[s] = await fetchPumpTicker(s);
+  for (const s of dexSymbols) {
+    out[s] = await fetchDexTicker(s);
   }
   return out;
 }
@@ -137,9 +177,9 @@ function appendLog(entry) {
 
 function validateSymbol(symbol) {
   if (BINANCE_SYMBOLS.includes(symbol)) return;
-  if (isPumpSymbol(symbol)) return;
+  if (isDexSymbol(symbol)) return;
   throw new Error(
-    `Unsupported symbol: ${symbol}. Use Binance: ${BINANCE_SYMBOLS.join(', ')} or pump token as PUMP:<solana_mint>`
+    `Unsupported symbol: ${symbol}. Use Binance: ${BINANCE_SYMBOLS.join(', ')} or DEX token as DEX:<chainId>:<tokenAddress> (legacy: PUMP:<solana_mint>)`
   );
 }
 
@@ -152,7 +192,7 @@ function ensureReason(reason) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const action = String(args.action || 'HOLD').toUpperCase();
-  const symbol = args.symbol ? String(args.symbol).toUpperCase() : null;
+  const symbol = normalizeSymbol(args.symbol);
   const reason = args.reason || args.why;
   const usdcAmount = toNum(args.usdc, null);
   const amountPct = toNum(args.pct, null);

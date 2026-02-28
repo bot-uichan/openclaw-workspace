@@ -52,8 +52,9 @@ If 30 minutes passed since last demo trade tick:
    - HOLD: `node scripts/demo-trade.js --action HOLD --reason "今回の判断理由"`
    - BUY (major): `node scripts/demo-trade.js --action BUY --symbol SOLUSDC --pct 50 --reason "今回の判断理由"`
    - SELL (major): `node scripts/demo-trade.js --action SELL --symbol SOLUSDC --pct 60 --reason "今回の判断理由"`
-   - BUY (pump token): `node scripts/demo-trade.js --action BUY --symbol PUMP:<solana_mint> --pct 50 --reason "今回の判断理由"`
-   - SELL (pump token): `node scripts/demo-trade.js --action SELL --symbol PUMP:<solana_mint> --pct 60 --reason "今回の判断理由"`
+   - BUY (DEX token): `node scripts/demo-trade.js --action BUY --symbol DEX:<chainId>:<tokenAddress> --pct 50 --reason "今回の判断理由"`
+   - SELL (DEX token): `node scripts/demo-trade.js --action SELL --symbol DEX:<chainId>:<tokenAddress> --pct 60 --reason "今回の判断理由"`
+   - Legacy shorthand: `PUMP:<solana_mint>` も使用可
 4. Read latest line from `memory/demo-trade-log.jsonl` and ensure `decision.reason` is present.
 5. Post update to Discord channel `1476106170094714962` when:
    - trade happened (BUY/SELL), or
