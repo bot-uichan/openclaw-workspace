@@ -57,6 +57,7 @@ let treeWorkId: string | null = null;
 const audioQueue: QueueItem[] = [];
 let activeQueueFolder: string | null = null;
 let player: ChildProcess | null = null;
+let playerBackend: "ffplay" | "afplay" = "ffplay";
 let playerPaused = false;
 let playerVolume = 100;
 let currentPlayingPath: string | null = null;
@@ -436,24 +437,55 @@ function sendPlayerKey(key: string, note?: string): void {
 }
 
 function spawnPlayer(pathToPlay: string, startSec: number): void {
+  const launchedAt = Date.now();
   const args = ["-nodisp", "-autoexit", "-loglevel", "warning", "-volume", String(playerVolume), "-ss", String(Math.max(0, startSec)), pathToPlay];
-  const proc = spawn("ffplay", args, { stdio: ["pipe", "ignore", "ignore"] });
+  const proc = spawn("ffplay", args, { stdio: ["pipe", "ignore", "pipe"] });
+  let stderrBuf = "";
+
+  proc.stderr?.on("data", (d) => {
+    stderrBuf += String(d);
+  });
+
   player = proc;
+  playerBackend = "ffplay";
   playerPaused = false;
   currentPlayingPath = pathToPlay;
   currentStartSec = Math.max(0, startSec);
   currentStartedAtMs = Date.now();
 
-  proc.on("exit", () => {
-    if (player === proc) {
-      player = null;
-      playerPaused = false;
-      currentPlayingPath = null;
-      currentStartSec = 0;
-      setStatus("再生終了");
-      prefetchQueue(2);
-      void playNextFromQueue();
+  proc.on("exit", (code) => {
+    if (player !== proc) return;
+
+    const livedMs = Date.now() - launchedAt;
+    player = null;
+    playerPaused = false;
+
+    if (code !== 0 && livedMs < 1500 && process.platform === "darwin") {
+      warn(`ffplay再生失敗(code=${code})。afplayへフォールバックします`);
+      if (stderrBuf.trim()) warn(`ffplay: ${stderrBuf.trim().slice(0, 240)}`);
+      const alt = spawn("afplay", [pathToPlay], { stdio: ["ignore", "ignore", "ignore"] });
+      player = alt;
+      playerBackend = "afplay";
+      currentPlayingPath = pathToPlay;
+      currentStartedAtMs = Date.now();
+      alt.on("exit", () => {
+        if (player === alt) {
+          player = null;
+          currentPlayingPath = null;
+          currentStartSec = 0;
+          setStatus("再生終了");
+          prefetchQueue(2);
+          void playNextFromQueue();
+        }
+      });
+      return;
     }
+
+    currentPlayingPath = null;
+    currentStartSec = 0;
+    setStatus("再生終了");
+    prefetchQueue(2);
+    void playNextFromQueue();
   });
 }
 
@@ -472,6 +504,8 @@ async function playNextFromQueue(): Promise<void> {
 
   try {
     const local = await resolvePlayablePath(item);
+    const st = await fs.promises.stat(local);
+    if (!st.size) throw new Error(`empty file: ${local}`);
     spawnPlayer(local, 0);
     prefetchQueue(2);
   } catch (e) {
@@ -662,6 +696,7 @@ screen.key(["x", "delete", "backspace"], () => {
 
 screen.key(["space"], () => {
   if (!player) return;
+  if (playerBackend !== "ffplay") return warn("afplay再生中は一時停止/再開は非対応");
   sendPlayerKey("p", playerPaused ? "再開" : "一時停止");
   playerPaused = !playerPaused;
   if (!playerPaused) currentStartedAtMs = Date.now();
@@ -669,23 +704,27 @@ screen.key(["space"], () => {
 
 screen.key(["-"], () => {
   if (!player) return;
+  if (playerBackend !== "ffplay") return warn("afplay再生中は音量変更は非対応");
   playerVolume = Math.max(0, playerVolume - 5);
   sendPlayerKey("9", `音量 ${playerVolume}%`);
 });
 
 screen.key(["="], () => {
   if (!player) return;
+  if (playerBackend !== "ffplay") return warn("afplay再生中は音量変更は非対応");
   playerVolume = Math.min(200, playerVolume + 5);
   sendPlayerKey("0", `音量 ${playerVolume}%`);
 });
 
 screen.key(["["], () => {
   if (!player) return;
+  if (playerBackend !== "ffplay") return warn("afplay再生中はシーク非対応");
   sendPlayerKey("\u001b[D", "-10秒シーク");
 });
 
 screen.key(["]"], () => {
   if (!player) return;
+  if (playerBackend !== "ffplay") return warn("afplay再生中はシーク非対応");
   sendPlayerKey("\u001b[C", "+10秒シーク");
 });
 
