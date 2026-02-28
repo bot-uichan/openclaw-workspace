@@ -426,16 +426,6 @@ function killPlayer(signal: NodeJS.Signals = "SIGTERM"): void {
   }
 }
 
-function sendPlayerKey(key: string, note?: string): void {
-  if (!player?.stdin?.writable) return;
-  try {
-    player.stdin.write(key);
-    if (note) setStatus(note);
-  } catch {
-    // ignore
-  }
-}
-
 function spawnPlayer(pathToPlay: string, startSec: number): void {
   const launchedAt = Date.now();
   const args = ["-nodisp", "-autoexit", "-loglevel", "warning", "-volume", String(playerVolume), "-ss", String(Math.max(0, startSec)), pathToPlay];
@@ -697,25 +687,21 @@ screen.key(["x", "delete", "backspace"], () => {
 
 screen.key(["space"], () => {
   if (!player) return;
-  if (playerBackend === "ffplay") {
-    sendPlayerKey("p", playerPaused ? "再開" : "一時停止");
-    playerPaused = !playerPaused;
-    if (!playerPaused) currentStartedAtMs = Date.now();
-    return;
-  }
-
-  // afplay fallback: signal-based pause/resume
   if (!playerPaused) {
     currentStartSec = elapsedSec();
     playerPaused = true;
-    killPlayer("SIGSTOP");
-    setStatus("一時停止(afplay)");
+    try {
+      player.kill("SIGSTOP");
+      setStatus("一時停止");
+    } catch {
+      warn("一時停止に失敗しました");
+    }
   } else {
     try {
-      player?.kill("SIGCONT");
+      player.kill("SIGCONT");
       playerPaused = false;
       currentStartedAtMs = Date.now();
-      setStatus("再開(afplay)");
+      setStatus("再開");
     } catch {
       warn("再開に失敗しました");
     }
@@ -725,45 +711,29 @@ screen.key(["space"], () => {
 screen.key(["-"], () => {
   if (!player) return;
   playerVolume = Math.max(0, playerVolume - 5);
-  if (playerBackend === "ffplay") {
-    sendPlayerKey("9", `音量 ${playerVolume}%`);
-  } else {
-    setStatus(`音量 ${playerVolume}% (afplay再起動反映)`);
-    restartCurrentAt(elapsedSec());
-  }
+  setStatus(`音量 ${playerVolume}%`);
+  restartCurrentAt(elapsedSec());
 });
 
 screen.key(["="], () => {
   if (!player) return;
   playerVolume = Math.min(200, playerVolume + 5);
-  if (playerBackend === "ffplay") {
-    sendPlayerKey("0", `音量 ${playerVolume}%`);
-  } else {
-    setStatus(`音量 ${playerVolume}% (afplay再起動反映)`);
-    restartCurrentAt(elapsedSec());
-  }
+  setStatus(`音量 ${playerVolume}%`);
+  restartCurrentAt(elapsedSec());
 });
 
 screen.key(["["], () => {
   if (!player) return;
-  if (playerBackend === "ffplay") {
-    sendPlayerKey("\u001b[D", "-10秒シーク");
-  } else {
-    const sec = Math.max(0, elapsedSec() - 10);
-    setStatus(`-10秒シーク (${sec.toFixed(1)}s)`);
-    restartCurrentAt(sec);
-  }
+  const sec = Math.max(0, elapsedSec() - 10);
+  setStatus(`-10秒シーク (${sec.toFixed(1)}s)`);
+  restartCurrentAt(sec);
 });
 
 screen.key(["]"], () => {
   if (!player) return;
-  if (playerBackend === "ffplay") {
-    sendPlayerKey("\u001b[C", "+10秒シーク");
-  } else {
-    const sec = Math.max(0, elapsedSec() + 10);
-    setStatus(`+10秒シーク (${sec.toFixed(1)}s)`);
-    restartCurrentAt(sec);
-  }
+  const sec = Math.max(0, elapsedSec() + 10);
+  setStatus(`+10秒シーク (${sec.toFixed(1)}s)`);
+  restartCurrentAt(sec);
 });
 
 const cleanup = () => {
