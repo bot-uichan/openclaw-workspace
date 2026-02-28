@@ -56,6 +56,10 @@ let activeQueueFolder: string | null = null;
 let player: ChildProcess | null = null;
 let playerPaused = false;
 let playerVolume = 100;
+let currentPlayingPath: string | null = null;
+let currentStartSec = 0;
+let currentStartedAtMs = 0;
+let isRestartingPlayer = false;
 
 const client = new DlsiteClient(stateDir, downloadDir);
 
@@ -164,16 +168,25 @@ async function renderThumb(row?: Row): Promise<void> {
     const tmpPath = tmpPathRaw.trim();
     thumbTmpPath = tmpPath;
 
+    try {
+      const { stdout } = await execFileAsync("bash", ["-lc", `chafa '${tmpPath}' --size=20x10 --symbols=block; rm -f '${tmpPath}'`], { maxBuffer: 1024 * 1024 });
+      thumbTmpPath = null;
+      clearThumbImage();
+      thumb.setContent(stdout);
+      screen.render();
+      return;
+    } catch {
+      // fallback to blessed.image
+    }
+
     const usedBlessedImage = await tryRenderThumbWithBlessedImage(tmpPath);
     if (usedBlessedImage) {
       screen.render();
       return;
     }
 
-    const { stdout } = await execFileAsync("bash", ["-lc", `chafa '${tmpPath}' --size=20x10 --symbols=block; rm -f '${tmpPath}'`], { maxBuffer: 1024 * 1024 });
-    thumbTmpPath = null;
     clearThumbImage();
-    thumb.setContent(stdout);
+    thumb.setContent(`thumb url:\n${u}`);
   } catch {
     clearThumbImage();
     thumb.setContent(`thumb url:\n${u}`);
@@ -276,6 +289,42 @@ async function ensurePlay(bin = "ffplay"): Promise<boolean> {
   }
 }
 
+function elapsedSec(): number {
+  if (!currentPlayingPath) return 0;
+  if (playerPaused) return currentStartSec;
+  return currentStartSec + Math.max(0, (Date.now() - currentStartedAtMs) / 1000);
+}
+
+function spawnPlayer(pathToPlay: string, startSec: number): void {
+  const args = ["-nodisp", "-autoexit", "-loglevel", "warning", "-volume", String(playerVolume), "-ss", String(Math.max(0, startSec)), pathToPlay];
+  const proc = spawn("ffplay", args, { stdio: ["ignore", "ignore", "ignore"] });
+  player = proc;
+  playerPaused = false;
+  currentPlayingPath = pathToPlay;
+  currentStartSec = Math.max(0, startSec);
+  currentStartedAtMs = Date.now();
+
+  proc.on("exit", () => {
+    player = null;
+    playerPaused = false;
+    if (isRestartingPlayer) {
+      isRestartingPlayer = false;
+      return;
+    }
+    currentPlayingPath = null;
+    currentStartSec = 0;
+    setStatus("再生終了");
+    void playNextFromQueue();
+  });
+}
+
+function restartCurrentAt(sec: number): void {
+  if (!player || !currentPlayingPath) return;
+  isRestartingPlayer = true;
+  player.kill("SIGTERM");
+  spawnPlayer(currentPlayingPath, sec);
+}
+
 async function playNextFromQueue(): Promise<void> {
   if (player || audioQueue.length === 0) return;
   if (!(await ensurePlay("ffplay"))) return;
@@ -285,15 +334,7 @@ async function playNextFromQueue(): Promise<void> {
 
   try {
     const local = await client.fetchPlayableToCache(item.workId, item.entry);
-    const proc = spawn("ffplay", ["-nodisp", "-autoexit", "-loglevel", "warning", "-volume", String(playerVolume), local], { stdio: ["pipe", "ignore", "ignore"] });
-    player = proc;
-    playerPaused = false;
-    proc.on("exit", () => {
-      player = null;
-      playerPaused = false;
-      setStatus("再生終了");
-      void playNextFromQueue();
-    });
+    spawnPlayer(local, 0);
   } catch (e) {
     err(`再生スキップ: ${String(e)}`);
     player = null;
@@ -401,14 +442,8 @@ screen.key(["tab"], () => {
   updateFocusDecor();
   updateSelectionInfo();
 });
-function sendPlayerKey(key: string, note: string): void {
-  if (!player?.stdin?.writable) return;
-  player.stdin.write(key);
-  setStatus(note);
-}
 
 screen.key(["q", "C-c"], async () => {
-  if (player?.stdin?.writable) player.stdin.end();
   player?.kill("SIGTERM");
   await client.close();
   process.exit(0);
@@ -484,30 +519,43 @@ screen.key(["x", "delete", "backspace"], () => {
 
 screen.key(["space"], () => {
   if (!player) return;
-  sendPlayerKey("p", playerPaused ? "再開" : "一時停止");
-  playerPaused = !playerPaused;
+  if (!playerPaused) {
+    currentStartSec = elapsedSec();
+    playerPaused = true;
+    player.kill("SIGSTOP");
+    setStatus("一時停止");
+  } else {
+    player.kill("SIGCONT");
+    playerPaused = false;
+    currentStartedAtMs = Date.now();
+    setStatus("再開");
+  }
 });
 
 screen.key(["-"], () => {
-  if (!player) return;
   playerVolume = Math.max(0, playerVolume - 5);
-  sendPlayerKey("9", `音量 ${playerVolume}%`);
+  setStatus(`音量 ${playerVolume}%`);
+  if (player && currentPlayingPath) restartCurrentAt(elapsedSec());
 });
 
 screen.key(["="], () => {
-  if (!player) return;
   playerVolume = Math.min(200, playerVolume + 5);
-  sendPlayerKey("0", `音量 ${playerVolume}%`);
+  setStatus(`音量 ${playerVolume}%`);
+  if (player && currentPlayingPath) restartCurrentAt(elapsedSec());
 });
 
 screen.key(["["], () => {
-  if (!player) return;
-  sendPlayerKey("\u001b[D", "-10秒シーク");
+  if (!player || !currentPlayingPath) return;
+  const sec = Math.max(0, elapsedSec() - 10);
+  setStatus(`-10秒シーク (${sec.toFixed(1)}s)`);
+  restartCurrentAt(sec);
 });
 
 screen.key(["]"], () => {
-  if (!player) return;
-  sendPlayerKey("\u001b[C", "+10秒シーク");
+  if (!player || !currentPlayingPath) return;
+  const sec = Math.max(0, elapsedSec() + 10);
+  setStatus(`+10秒シーク (${sec.toFixed(1)}s)`);
+  restartCurrentAt(sec);
 });
 
 (async () => {
