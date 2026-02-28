@@ -1,4 +1,5 @@
 import blessed from "blessed";
+import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import clipboard from "clipboardy";
@@ -368,6 +369,7 @@ function prefetchQueue(limit = 2): void {
   for (const item of audioQueue.slice(0, limit)) {
     const key = queueItemKey(item.workId, item.entry.path);
     if (playCache.has(key) || prefetchJobs.has(key)) continue;
+
     const job = client
       .fetchPlayableToCache(item.workId, item.entry)
       .then((local) => {
@@ -377,16 +379,32 @@ function prefetchQueue(limit = 2): void {
       })
       .catch((e) => {
         prefetchJobs.delete(key);
-        throw e;
+        warn(`prefetch失敗: ${item.entry.path} (${String(e)})`);
+        return "";
       });
+
     prefetchJobs.set(key, job);
   }
 }
 
 async function resolvePlayablePath(item: QueueItem): Promise<string> {
   const key = queueItemKey(item.workId, item.entry.path);
-  if (playCache.has(key)) return playCache.get(key)!;
-  if (prefetchJobs.has(key)) return prefetchJobs.get(key)!;
+
+  if (playCache.has(key)) {
+    const cached = playCache.get(key)!;
+    try {
+      await fs.promises.access(cached);
+      return cached;
+    } catch {
+      playCache.delete(key);
+    }
+  }
+
+  if (prefetchJobs.has(key)) {
+    const prefetched = await prefetchJobs.get(key)!;
+    if (prefetched) return prefetched;
+  }
+
   const local = await client.fetchPlayableToCache(item.workId, item.entry);
   playCache.set(key, local);
   return local;
