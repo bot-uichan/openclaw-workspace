@@ -13,7 +13,7 @@ const stateDir = path.join(HOME, ".cache", "dlsite-play-tui");
 const downloadDir = path.join(HOME, "Downloads", "dlsite");
 
 const screen = blessed.screen({ smartCSR: true, title: "DLsite Play TUI", fullUnicode: true });
-const header = blessed.box({ parent: screen, top: 0, left: 0, width: "100%", height: 1, style: { fg: "black", bg: "cyan" }, content: " DLsite TUI | TAB c i s l ENTER a A n d y | space:pause [ ]:seek -/=:vol q:quit" });
+const header = blessed.box({ parent: screen, top: 0, left: 0, width: "100%", height: 1, style: { fg: "black", bg: "cyan" }, content: " DLsite TUI | TAB c i s l ENTER a A n d x/del y | space [ ] -/= q" });
 
 const library = blessed.listtable({ parent: screen, top: 1, left: 0, width: "48%", height: "62%", border: "line", keys: true, vi: true, mouse: true, style: { header: { fg: "yellow", bold: true }, cell: { selected: { bg: "blue" } } }, data: [["Type", "Title", "ID"]] });
 const tree = blessed.list({
@@ -52,6 +52,7 @@ let treeFlat: FlatTreeRow[] = [];
 const expanded = new Set<string>();
 let treeWorkId: string | null = null;
 const audioQueue: QueueItem[] = [];
+let activeQueueFolder: string | null = null;
 let player: ChildProcess | null = null;
 let playerPaused = false;
 let playerVolume = 100;
@@ -221,6 +222,50 @@ function queueRefresh(): void {
   screen.render();
 }
 
+function folderOf(p: string): string {
+  const i = p.lastIndexOf("/");
+  return i >= 0 ? p.slice(0, i) : "";
+}
+
+function clearQueue(stopCurrent = false): void {
+  audioQueue.length = 0;
+  if (stopCurrent && player) player.kill("SIGTERM");
+  queueRefresh();
+}
+
+function enqueueFollowingInFolder(workId: string, title: string, targetPath: string): void {
+  const folder = folderOf(targetPath);
+  const files = treeFlat
+    .filter((r) => r.node.kind === "file")
+    .map((r) => (r.node.kind === "file" ? r.node.entry : null))
+    .filter((e): e is WorkTreeEntry => Boolean(e));
+
+  const startIdx = files.findIndex((f) => f.path === targetPath);
+  if (startIdx < 0) return;
+
+  if (activeQueueFolder !== null && activeQueueFolder !== folder) {
+    clearQueue(true);
+    info(`フォルダ切替: キューをクリア (${activeQueueFolder} -> ${folder})`);
+  }
+  activeQueueFolder = folder;
+
+  for (let i = startIdx; i < files.length; i++) {
+    const f = files[i];
+    if (folderOf(f.path) !== folder) break;
+    enqueueEntry(workId, title, f);
+  }
+}
+
+function removeQueueSelected(): void {
+  if (audioQueue.length === 0) return;
+  const idx = ((queue as unknown as { selected: number }).selected ?? 0);
+  if (idx < 0 || idx >= audioQueue.length) return;
+  const [rm] = audioQueue.splice(idx, 1);
+  info(`queue-: ${rm.entry.path}`);
+  if (audioQueue.length === 0) activeQueueFolder = null;
+  queueRefresh();
+}
+
 async function ensurePlay(bin = "ffplay"): Promise<boolean> {
   try {
     await execFileAsync("bash", ["-lc", `command -v ${bin}`]);
@@ -267,6 +312,13 @@ function enqueueEntry(workId: string, title: string, entry: WorkTreeEntry): void
 }
 
 function enqueueFolderRecursive(workId: string, title: string, folder: WorkTreeNode): void {
+  if (folder.kind !== "folder") return;
+  if (activeQueueFolder !== null && activeQueueFolder !== folder.path) {
+    clearQueue(true);
+    info(`フォルダ切替: キューをクリア (${activeQueueFolder} -> ${folder.path})`);
+  }
+  activeQueueFolder = folder.path;
+
   const walk = (n: WorkTreeNode) => {
     if (n.kind === "file") return enqueueEntry(workId, title, n.entry);
     n.children.forEach(walk);
@@ -313,7 +365,7 @@ function toggleTreeRow(): void {
     return;
   }
   if (!treeWorkId) return;
-  enqueueEntry(treeWorkId, currentRow()?.title ?? treeWorkId, n.entry);
+  enqueueFollowingInFolder(treeWorkId, currentRow()?.title ?? treeWorkId, n.entry.path);
   void playNextFromQueue();
 }
 
@@ -410,7 +462,9 @@ screen.key(["a"], () => {
   if (screen.focused !== tree) return;
   const row = currentTreeRow();
   if (!row || !treeWorkId) return;
-  if (row.node.kind === "file") enqueueEntry(treeWorkId, currentRow()?.title ?? treeWorkId, row.node.entry);
+  if (row.node.kind === "file") {
+    enqueueFollowingInFolder(treeWorkId, currentRow()?.title ?? treeWorkId, row.node.entry.path);
+  }
   queueRefresh();
   void playNextFromQueue();
 });
@@ -421,6 +475,11 @@ screen.key(["A"], () => {
 screen.key(["n"], () => {
   if (player) player.kill("SIGTERM");
   else void playNextFromQueue();
+});
+
+screen.key(["x", "delete", "backspace"], () => {
+  if (screen.focused !== queue) return;
+  removeQueueSelected();
 });
 
 screen.key(["space"], () => {
