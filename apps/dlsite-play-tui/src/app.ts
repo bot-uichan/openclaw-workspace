@@ -2,6 +2,7 @@ import blessed from "blessed";
 import path from "node:path";
 import os from "node:os";
 import clipboard from "clipboardy";
+import Jimp from "jimp";
 import { execFile, spawn, type ChildProcess } from "node:child_process";
 import { promisify } from "node:util";
 import { DlsiteClient } from "./dlsiteClient.js";
@@ -164,33 +165,36 @@ async function renderThumb(row?: Row): Promise<void> {
   }
 
   try {
-    const { stdout: tmpPathRaw } = await execFileAsync("bash", ["-lc", `tmp=$(mktemp); curl -fsSL '${u}' -o "$tmp"; echo -n "$tmp"`]);
-    const tmpPath = tmpPathRaw.trim();
-    thumbTmpPath = tmpPath;
+    const res = await fetch(u);
+    if (!res.ok) throw new Error(`thumb fetch failed: ${res.status}`);
+    const arr = await res.arrayBuffer();
+    const buf = Buffer.from(arr);
 
-    try {
-      const { stdout } = await execFileAsync("bash", ["-lc", `chafa '${tmpPath}' --size=20x10 --symbols=block; rm -f '${tmpPath}'`], { maxBuffer: 1024 * 1024 });
-      thumbTmpPath = null;
-      clearThumbImage();
-      thumb.setContent(stdout);
-      screen.render();
-      return;
-    } catch {
-      // fallback to blessed.image
-    }
+    const img = await Jimp.read(buf);
+    const targetW = 28;
+    const targetH = 14;
+    const chars = " .:-=+*#%@";
 
-    const usedBlessedImage = await tryRenderThumbWithBlessedImage(tmpPath);
-    if (usedBlessedImage) {
-      screen.render();
-      return;
+    img.resize(targetW, targetH).grayscale();
+    const lines: string[] = [];
+    for (let y = 0; y < targetH; y++) {
+      let line = "";
+      for (let x = 0; x < targetW; x++) {
+        const c = Jimp.intToRGBA(img.getPixelColor(x, y));
+        const b = c.r / 255;
+        const idx = Math.min(chars.length - 1, Math.floor(b * (chars.length - 1)));
+        line += chars[idx];
+      }
+      lines.push(line);
     }
 
     clearThumbImage();
-    thumb.setContent(`thumb url:\n${u}`);
+    thumb.setContent(lines.join("\n"));
   } catch {
     clearThumbImage();
     thumb.setContent(`thumb url:\n${u}`);
   }
+
   screen.render();
 }
 

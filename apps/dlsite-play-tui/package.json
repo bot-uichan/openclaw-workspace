@@ -13,6 +13,7 @@
     "blessed": "^0.1.81",
     "cheerio": "^1.0.0",
     "clipboardy": "^4.0.0",
+    "jimp": "^0.22.12",
     "open": "^10.1.0",
     "playwright": "^1.51.0"
   },
