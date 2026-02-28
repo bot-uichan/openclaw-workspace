@@ -61,6 +61,8 @@ let playerVolume = 100;
 let currentPlayingPath: string | null = null;
 let currentStartSec = 0;
 let currentStartedAtMs = 0;
+const playCache = new Map<string, string>();
+const prefetchJobs = new Map<string, Promise<string>>();
 
 const client = new DlsiteClient(stateDir, downloadDir);
 
@@ -296,6 +298,10 @@ function currentTreeRow(): FlatTreeRow | undefined {
   return treeFlat[idx];
 }
 
+function queueItemKey(workId: string, entryPath: string): string {
+  return `${workId}::${entryPath}`;
+}
+
 function queueRefresh(): void {
   const prev = ((queue as unknown as { selected: number }).selected ?? 0);
   queue.setItems(audioQueue.length ? audioQueue.map((q, i) => `${i + 1}. ${q.entry.path}`) : ["(empty)"]);
@@ -358,6 +364,34 @@ async function ensurePlay(bin = "ffplay"): Promise<boolean> {
   }
 }
 
+function prefetchQueue(limit = 2): void {
+  for (const item of audioQueue.slice(0, limit)) {
+    const key = queueItemKey(item.workId, item.entry.path);
+    if (playCache.has(key) || prefetchJobs.has(key)) continue;
+    const job = client
+      .fetchPlayableToCache(item.workId, item.entry)
+      .then((local) => {
+        playCache.set(key, local);
+        prefetchJobs.delete(key);
+        return local;
+      })
+      .catch((e) => {
+        prefetchJobs.delete(key);
+        throw e;
+      });
+    prefetchJobs.set(key, job);
+  }
+}
+
+async function resolvePlayablePath(item: QueueItem): Promise<string> {
+  const key = queueItemKey(item.workId, item.entry.path);
+  if (playCache.has(key)) return playCache.get(key)!;
+  if (prefetchJobs.has(key)) return prefetchJobs.get(key)!;
+  const local = await client.fetchPlayableToCache(item.workId, item.entry);
+  playCache.set(key, local);
+  return local;
+}
+
 function elapsedSec(): number {
   if (!currentPlayingPath) return 0;
   if (playerPaused) return currentStartSec;
@@ -373,9 +407,19 @@ function killPlayer(signal: NodeJS.Signals = "SIGTERM"): void {
   }
 }
 
+function sendPlayerKey(key: string, note?: string): void {
+  if (!player?.stdin?.writable) return;
+  try {
+    player.stdin.write(key);
+    if (note) setStatus(note);
+  } catch {
+    // ignore
+  }
+}
+
 function spawnPlayer(pathToPlay: string, startSec: number): void {
   const args = ["-nodisp", "-autoexit", "-loglevel", "warning", "-volume", String(playerVolume), "-ss", String(Math.max(0, startSec)), pathToPlay];
-  const proc = spawn("ffplay", args, { stdio: ["ignore", "ignore", "ignore"] });
+  const proc = spawn("ffplay", args, { stdio: ["pipe", "ignore", "ignore"] });
   player = proc;
   playerPaused = false;
   currentPlayingPath = pathToPlay;
@@ -389,6 +433,7 @@ function spawnPlayer(pathToPlay: string, startSec: number): void {
       currentPlayingPath = null;
       currentStartSec = 0;
       setStatus("再生終了");
+      prefetchQueue(2);
       void playNextFromQueue();
     }
   });
@@ -408,8 +453,9 @@ async function playNextFromQueue(): Promise<void> {
   setStatus(`再生中: ${item.entry.path}`);
 
   try {
-    const local = await client.fetchPlayableToCache(item.workId, item.entry);
+    const local = await resolvePlayablePath(item);
     spawnPlayer(local, 0);
+    prefetchQueue(2);
   } catch (e) {
     err(`再生スキップ: ${String(e)}`);
     player = null;
@@ -424,6 +470,7 @@ function enqueueEntry(workId: string, title: string, entry: WorkTreeEntry): void
   }
   audioQueue.push({ workId, title, entry });
   queueRefresh();
+  prefetchQueue(2);
   info(`queue+: ${entry.path}`);
 }
 
@@ -597,43 +644,31 @@ screen.key(["x", "delete", "backspace"], () => {
 
 screen.key(["space"], () => {
   if (!player) return;
-  if (!playerPaused) {
-    currentStartSec = elapsedSec();
-    playerPaused = true;
-    player.kill("SIGSTOP");
-    setStatus("一時停止");
-  } else {
-    player.kill("SIGCONT");
-    playerPaused = false;
-    currentStartedAtMs = Date.now();
-    setStatus("再開");
-  }
+  sendPlayerKey("p", playerPaused ? "再開" : "一時停止");
+  playerPaused = !playerPaused;
+  if (!playerPaused) currentStartedAtMs = Date.now();
 });
 
 screen.key(["-"], () => {
+  if (!player) return;
   playerVolume = Math.max(0, playerVolume - 5);
-  setStatus(`音量 ${playerVolume}%`);
-  if (player && currentPlayingPath) restartCurrentAt(elapsedSec());
+  sendPlayerKey("9", `音量 ${playerVolume}%`);
 });
 
 screen.key(["="], () => {
+  if (!player) return;
   playerVolume = Math.min(200, playerVolume + 5);
-  setStatus(`音量 ${playerVolume}%`);
-  if (player && currentPlayingPath) restartCurrentAt(elapsedSec());
+  sendPlayerKey("0", `音量 ${playerVolume}%`);
 });
 
 screen.key(["["], () => {
-  if (!player || !currentPlayingPath) return;
-  const sec = Math.max(0, elapsedSec() - 10);
-  setStatus(`-10秒シーク (${sec.toFixed(1)}s)`);
-  restartCurrentAt(sec);
+  if (!player) return;
+  sendPlayerKey("\u001b[D", "-10秒シーク");
 });
 
 screen.key(["]"], () => {
-  if (!player || !currentPlayingPath) return;
-  const sec = Math.max(0, elapsedSec() + 10);
-  setStatus(`+10秒シーク (${sec.toFixed(1)}s)`);
-  restartCurrentAt(sec);
+  if (!player) return;
+  sendPlayerKey("\u001b[C", "+10秒シーク");
 });
 
 const cleanup = () => {
