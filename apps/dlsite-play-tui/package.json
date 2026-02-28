@@ -1,21 +1,25 @@
 {
   "name": "dlsite-play-tui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "TypeScript TUI client for play.dlsite.com",
+  "bin": {
+    "dlsite-tui": "dist/cli.js"
+  },
   "scripts": {
     "dev": "tsx src/app.ts",
+    "dev:cli": "tsx src/cli.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/app.js"
+    "start": "node dist/app.js",
+    "start:cli": "node dist/cli.js"
   },
   "dependencies": {
     "blessed": "^0.1.81",
     "cheerio": "^1.0.0",
     "clipboardy": "^4.0.0",
     "jimp": "^0.22.12",
-    "open": "^10.1.0",
-    "playwright": "^1.51.0"
+    "open": "^10.1.0"
   },
   "devDependencies": {
     "@types/blessed": "^0.1.25",

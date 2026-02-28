@@ -5,10 +5,12 @@ import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 import os from "node:os";
 import { load } from "cheerio";
-import { chromium } from "playwright";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
 import type { OwnedWork, SearchResult, WorkTreeEntry, WorkTreeNode } from "./types.js";
 
 const BASE = "https://play.dlsite.com";
+const execAsync = promisify(exec);
 
 type CookieKV = { name: string; value: string };
 type CookieJson = { name: string; value: string; domain?: string; path?: string; secure?: boolean; httpOnly?: boolean };
@@ -122,27 +124,20 @@ export class DlsiteClient {
     return this.cookies.length;
   }
 
-  async importCookiesViaPlaywright(maxWaitMs = 180_000): Promise<number> {
-    const userDataDir = path.join(this.stateDir, "pw-cookie-profile");
-    await fs.mkdir(userDataDir, { recursive: true });
-    const context = await chromium.launchPersistentContext(userDataDir, { headless: false, viewport: { width: 1366, height: 900 } });
-    try {
-      const page = context.pages()[0] ?? (await context.newPage());
-      await page.goto(`${BASE}/library`, { waitUntil: "domcontentloaded" });
-      const started = Date.now();
-      while (Date.now() - started < maxWaitMs) {
-        await page.waitForTimeout(1000);
-        if (page.url().includes("/library") && !page.url().includes("/login")) {
-          const ck = await context.cookies(["https://play.dlsite.com", "https://www.dlsite.com"]);
-          this.cookies = dedupeCookies([...this.cookies, ...ck.map((c) => ({ name: c.name, value: c.value }))]);
-          await this.saveCookieStore();
-          return this.cookies.length;
-        }
-      }
-      throw new Error("Playwrightでのログイン待機がタイムアウトしました");
-    } finally {
-      await context.close();
+  async importCookiesViaHelper(helperCommand = process.env.DLPLAY_COOKIE_HELPER ?? "dlsite-tui-cookie-helper"): Promise<number> {
+    const { stdout } = await execAsync(helperCommand, { timeout: 5 * 60 * 1000, maxBuffer: 1024 * 1024 * 5 });
+    const parsed = JSON.parse(stdout) as { cookies?: Array<{ name?: string; value?: string }> };
+    const pairs = (parsed.cookies ?? [])
+      .filter((c) => typeof c?.name === "string" && typeof c?.value === "string")
+      .map((c) => ({ name: c.name!.trim(), value: c.value! }));
+
+    if (pairs.length === 0) {
+      throw new Error("認証ヘルパーが有効なcookieを返しませんでした");
     }
+
+    this.cookies = dedupeCookies([...this.cookies, ...pairs]);
+    await this.saveCookieStore();
+    return this.cookies.length;
   }
 
   async search(keyword: string): Promise<SearchResult[]> {

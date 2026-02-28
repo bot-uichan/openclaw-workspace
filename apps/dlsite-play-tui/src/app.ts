@@ -166,7 +166,7 @@ function showHelp(): void {
 
   showOverlay(
     "Help",
-    `{bold}Global{/bold}\nTAB focus | c cookie | i pw-cookie | l refresh library | t refresh tree | d download | y copy URL\n\n{bold}Playback{/bold}\nspace pause/resume | [ ] seek | -/= volume | n next\n\n{bold}Focus Now{/bold}: ${focus}\n${focusTips}\n`,
+    `{bold}Global{/bold}\nTAB focus | c cookie | i auth-helper | l refresh library | t refresh tree | d download | y copy URL\n\n{bold}Playback{/bold}\nspace pause/resume | [ ] seek | -/= volume | n next\n\n{bold}Focus Now{/bold}: ${focus}\n${focusTips}\n`,
   );
 }
 
@@ -524,7 +524,7 @@ screen.key(["c"], () => void (async () => {
   await client.setCookieInput(s);
   info("cookie saved");
 })().catch((e) => err(String(e))));
-screen.key(["i"], () => void client.importCookiesViaPlaywright().then(() => info("cookie imported via playwright")).catch((e) => err(String(e))));
+screen.key(["i"], () => void client.importCookiesViaHelper().then(() => info("cookie imported via helper")).catch((e) => err(String(e))));
 screen.key(["?"], () => showHelp());
 screen.key(["!"], () => void showDiagnostics().catch((e) => err(String(e))));
 screen.key(["s"], () => void doSearch().catch((e) => err(String(e))));

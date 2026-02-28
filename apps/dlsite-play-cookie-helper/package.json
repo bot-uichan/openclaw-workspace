@@ -1,0 +1,12 @@
+{
+  "name": "dlsite-play-cookie-helper",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "dlsite-tui-cookie-helper": "cli.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.51.0"
+  }
+}

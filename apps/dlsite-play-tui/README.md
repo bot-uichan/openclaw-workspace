@@ -1,53 +1,53 @@
 # dlsite-play-tui
 
-DLsite PlayをTypeScript TUIで操作します（ブラウザ遷移なし運用）。
+DLsite Play 用 TUI 本体。
 
-## できること
-- ライブラリ取得（内部API v3、起動時はキャッシュ優先）
-- 検索
-- TUI内ヘルプ (`?`)
-- トラブル診断画面 (`!`)
-- ミニプレイヤー常駐（曲名/経過時間/音量/状態）
-- ツリー表示（フォルダ展開/折りたたみ）
-- 音声ファイルをキューに積んで連続再生
-- 作品の一括ダウンロード
-- 右上固定パネルでサムネ表示（Pure Node描画、失敗時URL表示）
+## 方針
+- 本体は Playwright 非依存
+- 認証（Cookie取得）は外部ヘルパー `dlsite-tui-cookie-helper`（optional）
 
 ## セットアップ
 ```bash
 cd apps/dlsite-play-tui
 npm i
-npx playwright install chromium
-npm run dev
+npm run build
 ```
 
-## 操作
-- `TAB`: フォーカス切替（Library / Tree / Queue）
-- `c`: Cookie手動登録（header または JSON配列）
-- `i`: PlaywrightでCookie自動取得（Cookie取得専用）
-- `s`: 検索
-- 起動時: ライブラリはキャッシュから高速ロード
-- `l`: ライブラリを明示更新（API再取得してキャッシュ更新）
-- `Enter` (Library): 選択作品のtree取得（キャッシュ優先）してTreeへフォーカス移動
-- `t`: treeを明示更新（API再取得してキャッシュ更新）
-- `Enter` / `→` (Tree): フォルダ展開/折りたたみ、ファイルはキュー追加
-- `←`: フォルダを閉じる
-- `a`: 選択ファイルと同フォルダの「下の音声」をまとめてキュー追加
-- `A`: 選択フォルダ配下の音声を全キュー追加
-- フォルダを跨いで再生開始する場合、既存キューを自動クリア
-- `x` / `Delete` / `Backspace` (Queueフォーカス): キュー項目を1件削除
-- `n`: 次へ（再生中ならスキップ）
-- `space`: 一時停止/再開
-- `[ / ]`: 10秒シーク
-- `- / =`: 音量ダウン/アップ
-- `?`: 現在フォーカスに応じたヘルプ
-- `!`: 診断画面（Cookie/API/キャッシュ状態）
-- `d`: 選択作品をダウンロード
-- `q`: 終了
+CLIとして使う場合:
+```bash
+npm link
+# -> dlsite-tui コマンドが使える
+```
 
-## 再生
-- `ffplay`（ffmpeg同梱）を使用（`-nodisp -autoexit`）
-- 動画は現状対象外（要望どおり一旦保留）
+## コマンド
+```bash
+dlsite-tui run           # TUI起動（省略時デフォルト）
+dlsite-tui cookie-import # 外部ヘルパーでCookie取得
+dlsite-tui doctor        # Cookie/API/キャッシュ診断
+```
+
+## 認証ヘルパー（optional）
+Playwright認証を使う場合は別途:
+
+```bash
+cd ../dlsite-play-cookie-helper
+npm i
+npm link
+```
+
+これで `dlsite-tui cookie-import` が動作します。
+
+ヘルパーコマンドを明示したい場合:
+```bash
+DLPLAY_COOKIE_HELPER="dlsite-tui-cookie-helper" dlsite-tui cookie-import
+```
+
+## TUIキー（抜粋）
+- `l`: ライブラリ更新（通常はキャッシュ優先）
+- `t`: tree明示更新
+- `?`: ヘルプ
+- `!`: 診断
+- `space`, `[`, `]`, `-`, `=`: 再生操作
 
 ## 内部API
 - `GET https://play.dlsite.com/api/v3/content/count?last=0`
@@ -55,4 +55,3 @@ npm run dev
 - `POST https://play.dlsite.com/api/v3/content/works`
 - `GET https://play.dl.dlsite.com/api/v3/download/sign/cookie?workno=RJ...`
 - `GET {sign.url}ziptree.json`
-- `GET {sign.url}optimized/{file}`
