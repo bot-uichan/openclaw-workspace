@@ -460,7 +460,8 @@ function spawnPlayer(pathToPlay: string, startSec: number): void {
     player = null;
     playerPaused = false;
 
-    if (code !== 0 && livedMs < 1500 && process.platform === "darwin") {
+    const allowAfplayFallback = process.env.DLPLAY_AFPLAY_FALLBACK === "1";
+    if (code !== 0 && livedMs < 1500 && process.platform === "darwin" && allowAfplayFallback) {
       warn(`ffplay再生失敗(code=${code})。afplayへフォールバックします`);
       if (stderrBuf.trim()) warn(`ffplay: ${stderrBuf.trim().slice(0, 240)}`);
       const alt = spawn("afplay", [pathToPlay], { stdio: ["ignore", "ignore", "ignore"] });
@@ -696,36 +697,73 @@ screen.key(["x", "delete", "backspace"], () => {
 
 screen.key(["space"], () => {
   if (!player) return;
-  if (playerBackend !== "ffplay") return warn("afplay再生中は一時停止/再開は非対応");
-  sendPlayerKey("p", playerPaused ? "再開" : "一時停止");
-  playerPaused = !playerPaused;
-  if (!playerPaused) currentStartedAtMs = Date.now();
+  if (playerBackend === "ffplay") {
+    sendPlayerKey("p", playerPaused ? "再開" : "一時停止");
+    playerPaused = !playerPaused;
+    if (!playerPaused) currentStartedAtMs = Date.now();
+    return;
+  }
+
+  // afplay fallback: signal-based pause/resume
+  if (!playerPaused) {
+    currentStartSec = elapsedSec();
+    playerPaused = true;
+    killPlayer("SIGSTOP");
+    setStatus("一時停止(afplay)");
+  } else {
+    try {
+      player?.kill("SIGCONT");
+      playerPaused = false;
+      currentStartedAtMs = Date.now();
+      setStatus("再開(afplay)");
+    } catch {
+      warn("再開に失敗しました");
+    }
+  }
 });
 
 screen.key(["-"], () => {
   if (!player) return;
-  if (playerBackend !== "ffplay") return warn("afplay再生中は音量変更は非対応");
   playerVolume = Math.max(0, playerVolume - 5);
-  sendPlayerKey("9", `音量 ${playerVolume}%`);
+  if (playerBackend === "ffplay") {
+    sendPlayerKey("9", `音量 ${playerVolume}%`);
+  } else {
+    setStatus(`音量 ${playerVolume}% (afplay再起動反映)`);
+    restartCurrentAt(elapsedSec());
+  }
 });
 
 screen.key(["="], () => {
   if (!player) return;
-  if (playerBackend !== "ffplay") return warn("afplay再生中は音量変更は非対応");
   playerVolume = Math.min(200, playerVolume + 5);
-  sendPlayerKey("0", `音量 ${playerVolume}%`);
+  if (playerBackend === "ffplay") {
+    sendPlayerKey("0", `音量 ${playerVolume}%`);
+  } else {
+    setStatus(`音量 ${playerVolume}% (afplay再起動反映)`);
+    restartCurrentAt(elapsedSec());
+  }
 });
 
 screen.key(["["], () => {
   if (!player) return;
-  if (playerBackend !== "ffplay") return warn("afplay再生中はシーク非対応");
-  sendPlayerKey("\u001b[D", "-10秒シーク");
+  if (playerBackend === "ffplay") {
+    sendPlayerKey("\u001b[D", "-10秒シーク");
+  } else {
+    const sec = Math.max(0, elapsedSec() - 10);
+    setStatus(`-10秒シーク (${sec.toFixed(1)}s)`);
+    restartCurrentAt(sec);
+  }
 });
 
 screen.key(["]"], () => {
   if (!player) return;
-  if (playerBackend !== "ffplay") return warn("afplay再生中はシーク非対応");
-  sendPlayerKey("\u001b[C", "+10秒シーク");
+  if (playerBackend === "ffplay") {
+    sendPlayerKey("\u001b[C", "+10秒シーク");
+  } else {
+    const sec = Math.max(0, elapsedSec() + 10);
+    setStatus(`+10秒シーク (${sec.toFixed(1)}s)`);
+    restartCurrentAt(sec);
+  }
 });
 
 const cleanup = () => {
