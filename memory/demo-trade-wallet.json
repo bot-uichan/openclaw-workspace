@@ -409,11 +409,15 @@
     {
       "at": "2026-02-28T06:42:29.161Z",
       "totalUsdcValue": 998.7905
+    },
+    {
+      "at": "2026-02-28T07:42:26.435Z",
+      "totalUsdcValue": 998.7905
     }
   ],
   "lastTradeAt": "2026-02-28T05:42:39.388Z",
   "createdAt": "2026-02-25T06:39:32.605Z",
-  "updatedAt": "2026-02-28T06:42:29.162Z",
+  "updatedAt": "2026-02-28T07:42:26.438Z",
   "decisionHistory": [
     {
       "at": "2026-02-25T06:47:10.987Z",
@@ -1020,6 +1024,12 @@
       "action": "SELL_ALL",
       "symbol": null,
       "reason": "TradingViewでSOLUSDは1日-5.46%、1か月-36.07%の弱い地合いを確認。TavilyでもFunding弱含み・OI高止まり・清算継続で下方向ノイズ優勢。ETFフローは下支え材料だが短期反転の確度不足のため、残ポジを全利確してSELL_ALL。"
+    },
+    {
+      "at": "2026-02-28T07:42:26.435Z",
+      "action": "SELL_ALL",
+      "symbol": null,
+      "reason": "TradingViewブラウザ確認でSOLは戻り優勢の形を確認できず、Tavilyでも短期レジスタンス88-91が重い一方でデリバはFunding弱含み/OI高水準/清算継続。ETF流入の下支えはあるが逆行リスク回避を優先し、残ポジションを全決済。"
     }
   ]
 }
