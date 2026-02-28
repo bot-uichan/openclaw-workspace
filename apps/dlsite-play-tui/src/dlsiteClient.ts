@@ -22,14 +22,19 @@ type SignedTree = {
 export class DlsiteClient {
   private cookies: CookieKV[] = [];
   private readonly cookieStorePath: string;
+  private readonly libraryCachePath: string;
+  private readonly treeCacheDir: string;
 
   constructor(private readonly stateDir: string, private readonly downloadDir: string) {
     this.cookieStorePath = path.join(this.stateDir, "cookies.json");
+    this.libraryCachePath = path.join(this.stateDir, "library-cache.json");
+    this.treeCacheDir = path.join(this.stateDir, "tree-cache");
   }
 
   async boot(): Promise<void> {
     await fs.mkdir(this.stateDir, { recursive: true });
     await fs.mkdir(this.downloadDir, { recursive: true });
+    await fs.mkdir(this.treeCacheDir, { recursive: true });
     await this.loadCookieStore();
   }
 
@@ -113,7 +118,12 @@ export class DlsiteClient {
     return out.slice(0, 100);
   }
 
-  async listOwnedWorks(): Promise<OwnedWork[]> {
+  async listOwnedWorks(forceRefresh = false): Promise<OwnedWork[]> {
+    if (!forceRefresh) {
+      const cached = await this.readLibraryCache();
+      if (cached.length > 0) return cached;
+    }
+
     const countData = await this.fetchJson<{ user?: number }>("https://play.dlsite.com/api/v3/content/count?last=0");
     if (typeof countData.user !== "number") throw new Error("ライブラリAPI応答が不正です");
     const sales = await this.fetchJson<Array<{ workno?: string }>>("https://play.dlsite.com/api/v3/content/sales?last=0");
@@ -146,12 +156,21 @@ export class DlsiteClient {
         });
       }
     }
+
+    await this.writeLibraryCache(works);
     return works;
   }
 
-  async getWorkTreeNodes(workId: string): Promise<WorkTreeNode[]> {
+  async getWorkTreeNodes(workId: string, forceRefresh = false): Promise<WorkTreeNode[]> {
+    if (!forceRefresh) {
+      const cached = await this.readTreeCache(workId);
+      if (cached.length > 0) return cached;
+    }
+
     const { ziptree } = await this.getSignedZipTree(workId);
-    return buildTree(ziptree.tree ?? [], ziptree.playfile ?? {});
+    const tree = buildTree(ziptree.tree ?? [], ziptree.playfile ?? {});
+    await this.writeTreeCache(workId, tree);
+    return tree;
   }
 
   async fetchPlayableToCache(workId: string, entry: WorkTreeEntry): Promise<string> {
@@ -247,6 +266,38 @@ export class DlsiteClient {
 
   private async saveCookieStore(): Promise<void> {
     await fs.writeFile(this.cookieStorePath, JSON.stringify(this.cookies, null, 2), "utf8");
+  }
+
+  private async readLibraryCache(): Promise<OwnedWork[]> {
+    try {
+      const raw = await fs.readFile(this.libraryCachePath, "utf8");
+      const parsed = JSON.parse(raw) as { works?: OwnedWork[] };
+      return Array.isArray(parsed.works) ? parsed.works : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private async writeLibraryCache(works: OwnedWork[]): Promise<void> {
+    await fs.writeFile(this.libraryCachePath, JSON.stringify({ updatedAt: new Date().toISOString(), works }, null, 2), "utf8");
+  }
+
+  private treeCachePath(workId: string): string {
+    return path.join(this.treeCacheDir, `${workId}.json`);
+  }
+
+  private async readTreeCache(workId: string): Promise<WorkTreeNode[]> {
+    try {
+      const raw = await fs.readFile(this.treeCachePath(workId), "utf8");
+      const parsed = JSON.parse(raw) as { tree?: WorkTreeNode[] };
+      return Array.isArray(parsed.tree) ? parsed.tree : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private async writeTreeCache(workId: string, tree: WorkTreeNode[]): Promise<void> {
+    await fs.writeFile(this.treeCachePath(workId), JSON.stringify({ updatedAt: new Date().toISOString(), tree }, null, 2), "utf8");
   }
 }
 

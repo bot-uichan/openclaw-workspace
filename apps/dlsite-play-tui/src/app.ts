@@ -14,7 +14,7 @@ const stateDir = path.join(HOME, ".cache", "dlsite-play-tui");
 const downloadDir = path.join(HOME, "Downloads", "dlsite");
 
 const screen = blessed.screen({ smartCSR: true, title: "DLsite Play TUI", fullUnicode: true });
-const header = blessed.box({ parent: screen, top: 0, left: 0, width: "100%", height: 1, style: { fg: "black", bg: "cyan" }, content: " DLsite TUI | TAB c i s l ENTER a A n d x/del y | space [ ] -/= q" });
+const header = blessed.box({ parent: screen, top: 0, left: 0, width: "100%", height: 1, style: { fg: "black", bg: "cyan" }, content: " DLsite TUI | TAB c i s l:refresh ENTER tree t:treeRefresh a A n d x/del y | space [ ] -/= q" });
 
 const library = blessed.listtable({ parent: screen, top: 1, left: 0, width: "48%", height: "62%", border: "line", keys: true, vi: true, mouse: true, style: { header: { fg: "yellow", bold: true }, cell: { selected: { bg: "blue" } } }, data: [["Type", "Title", "ID"]] });
 const tree = blessed.list({
@@ -380,23 +380,23 @@ async function doSearch(): Promise<void> {
   info(`検索: ${result.length}件`);
 }
 
-async function doLibrary(): Promise<void> {
-  setStatus("ライブラリ読み込み中...");
-  const works = await client.listOwnedWorks();
+async function doLibrary(forceRefresh = false): Promise<void> {
+  setStatus(forceRefresh ? "ライブラリ更新中..." : "ライブラリ読み込み中(キャッシュ優先)...");
+  const works = await client.listOwnedWorks(forceRefresh);
   setRows(works.map((w) => ({ kind: "owned", title: w.title, url: w.detailUrl, raw: w })));
-  setStatus(`ライブラリ ${works.length}件`);
+  setStatus(`ライブラリ ${works.length}件${forceRefresh ? " (更新)" : ""}`);
 }
 
-async function doLoadTree(): Promise<void> {
+async function doLoadTree(forceRefresh = false): Promise<void> {
   const id = currentWorkId();
   const row = currentRow();
   if (!id || !row) return warn("作品未選択");
   treeWorkId = id;
-  treeRoots = await client.getWorkTreeNodes(id);
+  treeRoots = await client.getWorkTreeNodes(id, forceRefresh);
   expanded.clear();
   treeRoots.forEach((n) => n.kind === "folder" && expanded.add(n.path));
   rebuildTreeList();
-  info(`tree loaded: ${id}`);
+  info(`tree loaded: ${id}${forceRefresh ? " (refresh)" : ""}`);
 }
 
 function toggleTreeRow(): void {
@@ -460,8 +460,8 @@ screen.key(["c"], () => void (async () => {
 })().catch((e) => err(String(e))));
 screen.key(["i"], () => void client.importCookiesViaPlaywright().then(() => info("cookie imported via playwright")).catch((e) => err(String(e))));
 screen.key(["s"], () => void doSearch().catch((e) => err(String(e))));
-screen.key(["l"], () => void doLibrary().catch((e) => err(String(e))));
-screen.key(["t"], () => void doLoadTree().catch((e) => err(String(e))));
+screen.key(["l"], () => void doLibrary(true).catch((e) => err(String(e))));
+screen.key(["t"], () => void doLoadTree(true).catch((e) => err(String(e))));
 screen.key(["d"], () => void doDownload().catch((e) => err(String(e))));
 screen.key(["y"], () => {
   const r = currentRow();
