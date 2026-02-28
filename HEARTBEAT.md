@@ -50,8 +50,10 @@ If 30 minutes passed since last demo trade tick:
    - Prefer larger sizing than before when conviction exists (example: BUY 40-70%, SELL 40-100%).
 3. Execute trade with **required reason** log:
    - HOLD: `node scripts/demo-trade.js --action HOLD --reason "今回の判断理由"`
-   - BUY: `node scripts/demo-trade.js --action BUY --symbol SOLUSDC --pct 50 --reason "今回の判断理由"`
-   - SELL: `node scripts/demo-trade.js --action SELL --symbol SOLUSDC --pct 60 --reason "今回の判断理由"`
+   - BUY (major): `node scripts/demo-trade.js --action BUY --symbol SOLUSDC --pct 50 --reason "今回の判断理由"`
+   - SELL (major): `node scripts/demo-trade.js --action SELL --symbol SOLUSDC --pct 60 --reason "今回の判断理由"`
+   - BUY (pump token): `node scripts/demo-trade.js --action BUY --symbol PUMP:<solana_mint> --pct 50 --reason "今回の判断理由"`
+   - SELL (pump token): `node scripts/demo-trade.js --action SELL --symbol PUMP:<solana_mint> --pct 60 --reason "今回の判断理由"`
 4. Read latest line from `memory/demo-trade-log.jsonl` and ensure `decision.reason` is present.
 5. Post update to Discord channel `1476106170094714962` when:
    - trade happened (BUY/SELL), or

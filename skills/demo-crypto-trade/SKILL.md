@@ -25,6 +25,7 @@ node skills/tavily-search/scripts/tavily-search.mjs "BTC ETF flow today impact" 
 3. Make a discretionary decision with aggressive bias: `HOLD | BUY | SELL | SELL_ALL`.
    - Prefer action over repeated HOLD when conviction is moderate or higher.
    - Use larger position sizing when conviction exists (guide: BUY 40-70%, SELL 40-100%).
+   - Allow both majors and pump tokens. Pump token format: `PUMP:<solana_mint>` (price source: DexScreener USD).
 4. Execute with a required reason (mandatory):
 
 ```bash
@@ -39,6 +40,9 @@ node scripts/demo-trade.js --action SELL --symbol SOLUSDC --pct 60 --reason "今
 
 # SELL_ALL
 node scripts/demo-trade.js --action SELL_ALL --reason "今回の判断理由"
+
+# BUY pump token example (mint address)
+node scripts/demo-trade.js --action BUY --symbol PUMP:6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN --pct 50 --reason "今回の判断理由"
 ```
 
 5. Verify the latest log line in `memory/demo-trade-log.jsonl` contains `decision.reason`.

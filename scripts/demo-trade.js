@@ -4,7 +4,7 @@ const path = require('path');
 
 const STATE_PATH = path.join(__dirname, '..', 'memory', 'demo-trade-wallet.json');
 const LOG_PATH = path.join(__dirname, '..', 'memory', 'demo-trade-log.jsonl');
-const SYMBOLS = ['BTCUSDC', 'ETHUSDC', 'SOLUSDC'];
+const BINANCE_SYMBOLS = ['BTCUSDC', 'ETHUSDC', 'SOLUSDC'];
 
 function ensureDir(filePath) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -25,6 +25,14 @@ function parseArgs(argv) {
 function toNum(v, d = null) {
   const n = Number(v);
   return Number.isFinite(n) ? n : d;
+}
+
+function isPumpSymbol(symbol) {
+  return /^PUMP:[1-9A-HJ-NP-Za-km-z]{32,44}$/i.test(symbol || '');
+}
+
+function getPumpMint(symbol) {
+  return String(symbol).split(':')[1];
 }
 
 function loadState() {
@@ -53,19 +61,64 @@ function saveState(state) {
   fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2));
 }
 
-async function fetchTickers() {
-  const url = `https://api.binance.com/api/v3/ticker/24hr?symbols=${encodeURIComponent(JSON.stringify(SYMBOLS))}`;
-  const res = await fetch(url, { headers: { 'User-Agent': 'openclaw-demo-trade/2.0' } });
-  if (!res.ok) throw new Error(`Failed to fetch tickers: ${res.status}`);
+async function fetchBinanceTickers(symbols) {
+  if (!symbols.length) return {};
+  const url = `https://api.binance.com/api/v3/ticker/24hr?symbols=${encodeURIComponent(JSON.stringify(symbols))}`;
+  const res = await fetch(url, { headers: { 'User-Agent': 'openclaw-demo-trade/3.0' } });
+  if (!res.ok) throw new Error(`Failed to fetch Binance tickers: ${res.status}`);
   const data = await res.json();
   const map = {};
   for (const t of data) {
     map[t.symbol] = {
       price: Number(t.lastPrice),
       changePct: Number(t.priceChangePercent),
+      source: 'binance',
     };
   }
   return map;
+}
+
+async function fetchPumpTicker(symbol) {
+  const mint = getPumpMint(symbol);
+  const url = `https://api.dexscreener.com/latest/dex/tokens/${mint}`;
+  const res = await fetch(url, { headers: { 'User-Agent': 'openclaw-demo-trade/3.0' } });
+  if (!res.ok) throw new Error(`Failed to fetch DexScreener token ${mint}: ${res.status}`);
+  const data = await res.json();
+  const pairs = Array.isArray(data.pairs) ? data.pairs : [];
+  if (!pairs.length) throw new Error(`No DexScreener pairs for ${symbol}`);
+
+  const ranked = pairs
+    .filter((p) => Number(p?.priceUsd) > 0)
+    .sort((a, b) => Number(b?.liquidity?.usd || 0) - Number(a?.liquidity?.usd || 0));
+
+  if (!ranked.length) throw new Error(`No USD-priced DexScreener pairs for ${symbol}`);
+  const best = ranked[0];
+
+  return {
+    price: Number(best.priceUsd),
+    changePct: Number(best?.priceChange?.h24 || 0),
+    source: 'dexscreener',
+    pair: best.pairAddress,
+    dexId: best.dexId,
+    chainId: best.chainId,
+    tokenAddress: mint,
+  };
+}
+
+async function fetchTickers(state, requestedSymbol) {
+  const universe = new Set(BINANCE_SYMBOLS);
+  Object.keys(state.positions || {}).forEach((s) => universe.add(s));
+  if (requestedSymbol) universe.add(requestedSymbol);
+
+  const all = [...universe];
+  const binanceSymbols = all.filter((s) => BINANCE_SYMBOLS.includes(s));
+  const pumpSymbols = all.filter((s) => isPumpSymbol(s));
+
+  const out = await fetchBinanceTickers(binanceSymbols);
+  for (const s of pumpSymbols) {
+    out[s] = await fetchPumpTicker(s);
+  }
+  return out;
 }
 
 function portfolioValue(state, tickers) {
@@ -83,9 +136,11 @@ function appendLog(entry) {
 }
 
 function validateSymbol(symbol) {
-  if (!SYMBOLS.includes(symbol)) {
-    throw new Error(`Unsupported symbol: ${symbol}. Use one of: ${SYMBOLS.join(', ')}`);
-  }
+  if (BINANCE_SYMBOLS.includes(symbol)) return;
+  if (isPumpSymbol(symbol)) return;
+  throw new Error(
+    `Unsupported symbol: ${symbol}. Use Binance: ${BINANCE_SYMBOLS.join(', ')} or pump token as PUMP:<solana_mint>`
+  );
 }
 
 function ensureReason(reason) {
@@ -106,7 +161,7 @@ async function main() {
   ensureReason(reason);
 
   const state = loadState();
-  const tickers = await fetchTickers();
+  const tickers = await fetchTickers(state, symbol);
   const now = new Date().toISOString();
   const trades = [];
 
@@ -133,7 +188,7 @@ async function main() {
     pos.qty += buyQty;
     pos.entryPrice = newCost / pos.qty;
 
-    trades.push({ side: 'BUY', symbol, qty: Number(buyQty.toFixed(8)), price: mkt.price, spendUsdc: Number(spend.toFixed(4)), reason });
+    trades.push({ side: 'BUY', symbol, qty: Number(buyQty.toFixed(8)), price: mkt.price, spendUsdc: Number(spend.toFixed(4)), reason, source: mkt.source });
     state.lastTradeAt = now;
   } else if (action === 'SELL') {
     if (!symbol) throw new Error('SELL requires --symbol');
@@ -153,7 +208,7 @@ async function main() {
     if (pos.qty <= 1e-12) delete state.positions[symbol];
 
     const pnlPct = ((mkt.price - pos.entryPrice) / pos.entryPrice) * 100;
-    trades.push({ side: 'SELL', symbol, qty: Number(sellQty.toFixed(8)), price: mkt.price, proceedsUsdc: Number(proceeds.toFixed(4)), pnlPct: Number(pnlPct.toFixed(2)), reason });
+    trades.push({ side: 'SELL', symbol, qty: Number(sellQty.toFixed(8)), price: mkt.price, proceedsUsdc: Number(proceeds.toFixed(4)), pnlPct: Number(pnlPct.toFixed(2)), reason, source: mkt.source });
     state.lastTradeAt = now;
   } else if (action === 'SELL_ALL') {
     for (const [s, pos] of Object.entries(state.positions)) {
@@ -162,7 +217,7 @@ async function main() {
       const proceeds = pos.qty * mkt.price;
       const pnlPct = ((mkt.price - pos.entryPrice) / pos.entryPrice) * 100;
       state.usdc += proceeds;
-      trades.push({ side: 'SELL', symbol: s, qty: Number(pos.qty.toFixed(8)), price: mkt.price, proceedsUsdc: Number(proceeds.toFixed(4)), pnlPct: Number(pnlPct.toFixed(2)), reason });
+      trades.push({ side: 'SELL', symbol: s, qty: Number(pos.qty.toFixed(8)), price: mkt.price, proceedsUsdc: Number(proceeds.toFixed(4)), pnlPct: Number(pnlPct.toFixed(2)), reason, source: mkt.source });
       delete state.positions[s];
     }
     if (trades.length) state.lastTradeAt = now;
@@ -196,7 +251,7 @@ async function main() {
   saveState(state);
   appendLog(entry);
 
-  const tradeText = trades.length ? trades.map(t => `${t.side} ${t.symbol}`).join(', ') : 'NO_TRADE';
+  const tradeText = trades.length ? trades.map((t) => `${t.side} ${t.symbol}`).join(', ') : 'NO_TRADE';
   console.log(`[demo-trade] ${tradeText} | decision=${action} | total=${entry.totalUsdcValue} USDC | cash=${entry.usdc}`);
 }
 
