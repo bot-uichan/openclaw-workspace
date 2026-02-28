@@ -49,6 +49,53 @@ export class DlsiteClient {
     }
   }
 
+  async runDiagnostics(): Promise<{
+    cookieCount: number;
+    loginOk: boolean;
+    countOk: boolean;
+    salesOk: boolean;
+    libraryCacheWorks: number;
+    treeCacheFiles: number;
+    errors: string[];
+  }> {
+    const errors: string[] = [];
+    let countOk = false;
+    let salesOk = false;
+    let loginOk = false;
+
+    try {
+      const c = await this.fetchJson<{ user?: number }>("https://play.dlsite.com/api/v3/content/count?last=0");
+      countOk = typeof c.user === "number";
+      loginOk = countOk;
+    } catch (e) {
+      errors.push(`count API: ${String(e)}`);
+    }
+
+    try {
+      const s = await this.fetchJson<Array<{ workno?: string }>>("https://play.dlsite.com/api/v3/content/sales?last=0");
+      salesOk = Array.isArray(s);
+    } catch (e) {
+      errors.push(`sales API: ${String(e)}`);
+    }
+
+    const lib = await this.readLibraryCache();
+    let treeCacheFiles = 0;
+    try {
+      const entries = await fs.readdir(this.treeCacheDir);
+      treeCacheFiles = entries.filter((x) => x.endsWith(".json")).length;
+    } catch {}
+
+    return {
+      cookieCount: this.cookies.length,
+      loginOk,
+      countOk,
+      salesOk,
+      libraryCacheWorks: lib.length,
+      treeCacheFiles,
+      errors,
+    };
+  }
+
   async setCookieInput(raw: string): Promise<number> {
     const input = raw.trim();
     if (!input) throw new Error("Cookie入力が空です");

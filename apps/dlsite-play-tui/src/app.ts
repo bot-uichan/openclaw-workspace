@@ -14,9 +14,9 @@ const stateDir = path.join(HOME, ".cache", "dlsite-play-tui");
 const downloadDir = path.join(HOME, "Downloads", "dlsite");
 
 const screen = blessed.screen({ smartCSR: true, title: "DLsite Play TUI", fullUnicode: true });
-const header = blessed.box({ parent: screen, top: 0, left: 0, width: "100%", height: 1, style: { fg: "black", bg: "cyan" }, content: " DLsite TUI | TAB c i s l:refresh ENTER tree t:treeRefresh a A n d x/del y | space [ ] -/= q" });
+const header = blessed.box({ parent: screen, top: 0, left: 0, width: "100%", height: 1, style: { fg: "black", bg: "cyan" }, content: " DLsite TUI | ?:help !:diag TAB c i s l ENTER t a A n d x y space [ ] -/= q" });
 
-const library = blessed.listtable({ parent: screen, top: 1, left: 0, width: "48%", height: "62%", border: "line", keys: true, vi: true, mouse: true, style: { header: { fg: "yellow", bold: true }, cell: { selected: { bg: "blue" } } }, data: [["Type", "Title", "ID"]] });
+const library = blessed.listtable({ parent: screen, top: 1, left: 0, width: "48%", height: "62%", border: "line", keys: true, vi: true, mouse: true, style: { header: { fg: "yellow", bold: true }, cell: { selected: { bg: "blue" } } }, data: [["Title", "ID"]] });
 const tree = blessed.list({
   parent: screen,
   top: 1,
@@ -39,8 +39,9 @@ const thumb = blessed.box({ parent: screen, top: 1, left: "82%", width: "18%", h
 let thumbImage: blessed.Widgets.BoxElement | null = null;
 let thumbTmpPath: string | null = null;
 const queue = blessed.list({ parent: screen, top: "32%", left: "82%", width: "18%", height: "31%", border: "line", label: " Queue ", keys: true, vi: true, mouse: true, items: ["(empty)"] });
-const selectionInfo = blessed.box({ parent: screen, top: "63%", left: 0, width: "100%", height: 3, border: "line", tags: true, content: " {cyan-fg}Selection{/cyan-fg}: -" });
-const logs = blessed.log({ parent: screen, top: "66%", left: 0, width: "100%", height: "31%-2", border: "line", label: " Logs ", tags: true });
+const miniPlayer = blessed.box({ parent: screen, top: "63%", left: 0, width: "100%", height: 3, border: "line", tags: true, content: " {magenta-fg}Player{/magenta-fg}: idle" });
+const selectionInfo = blessed.box({ parent: screen, top: "66%", left: 0, width: "100%", height: 3, border: "line", tags: true, content: " {cyan-fg}Selection{/cyan-fg}: -" });
+const logs = blessed.log({ parent: screen, top: "69%", left: 0, width: "100%", height: "28%-2", border: "line", label: " Logs ", tags: true });
 const status = blessed.box({ parent: screen, bottom: 0, left: 0, width: "100%", height: 3, border: "line", content: " Ready" });
 
 type Row = { kind: "search" | "owned"; title: string; url: string; raw: SearchResult | OwnedWork };
@@ -67,13 +68,20 @@ const client = new DlsiteClient(stateDir, downloadDir);
 const info = (m: string) => { logs.log(`{green-fg}${m}{/green-fg}`); screen.render(); };
 const warn = (m: string) => { logs.log(`{yellow-fg}${m}{/yellow-fg}`); screen.render(); };
 const err = (m: string) => { logs.log(`{red-fg}${m}{/red-fg}`); screen.render(); };
-const setStatus = (m: string) => { status.setContent(` ${m}`); screen.render(); };
+const setStatus = (m: string) => { status.setContent(` ${m}`); updateMiniPlayer(); screen.render(); };
 
 function updateFocusDecor(): void {
   const f = screen.focused;
   library.style.border = { fg: f === library ? "cyan" : "gray" };
   tree.style.border = { fg: f === tree ? "cyan" : "gray" };
   queue.style.border = { fg: f === queue ? "cyan" : "gray" };
+}
+
+function updateMiniPlayer(): void {
+  const state = player ? (playerPaused ? "paused" : "playing") : "idle";
+  const pos = currentPlayingPath ? `${elapsedSec().toFixed(1)}s` : "0.0s";
+  const title = currentPlayingPath ? path.basename(currentPlayingPath) : "-";
+  miniPlayer.setContent(` {magenta-fg}Player{/magenta-fg}: ${state} | ${title} | ${pos} | vol ${playerVolume}%`);
 }
 
 function updateSelectionInfo(): void {
@@ -104,7 +112,7 @@ function currentWorkId(): string | null {
 function setRows(newRows: Row[]): void {
   rows.length = 0;
   rows.push(...newRows);
-  library.setData([["Type", "Title", "ID"], ...newRows.map((r) => [r.kind, r.title.slice(0, 56), r.kind === "owned" ? (r.raw as OwnedWork).id : r.url])]);
+  library.setData([["Title", "ID"], ...newRows.map((r) => [r.title.slice(0, 72), r.kind === "owned" ? (r.raw as OwnedWork).id : "SEARCH"])]);
   if (newRows.length > 0) library.select(1);
   screen.render();
 }
@@ -118,6 +126,64 @@ function prompt(label: string, initial = ""): Promise<string | null> {
       resolve(value ?? null);
     });
   });
+}
+
+function showOverlay(title: string, content: string): void {
+  const box = blessed.box({
+    parent: screen,
+    top: "center",
+    left: "center",
+    width: "80%",
+    height: "70%",
+    border: "line",
+    tags: true,
+    scrollable: true,
+    keys: true,
+    vi: true,
+    mouse: true,
+    label: ` ${title} (q/esc to close) `,
+    content,
+  });
+  box.focus();
+  const close = () => {
+    box.destroy();
+    updateFocusDecor();
+    updateSelectionInfo();
+    screen.render();
+  };
+  box.key(["q", "escape"], close);
+  screen.render();
+}
+
+function showHelp(): void {
+  const focus = screen.focused === library ? "Library" : screen.focused === tree ? "Tree" : "Queue";
+  const focusTips =
+    focus === "Library"
+      ? "ENTER: treeロード, l:更新, s:検索"
+      : focus === "Tree"
+      ? "ENTER: 展開/キュー投入, a:同フォルダ以降, A:配下全部"
+      : "x/del: 1件削除, n:次へ";
+
+  showOverlay(
+    "Help",
+    `{bold}Global{/bold}\nTAB focus | c cookie | i pw-cookie | l refresh library | t refresh tree | d download | y copy URL\n\n{bold}Playback{/bold}\nspace pause/resume | [ ] seek | -/= volume | n next\n\n{bold}Focus Now{/bold}: ${focus}\n${focusTips}\n`,
+  );
+}
+
+async function showDiagnostics(): Promise<void> {
+  const d = await client.runDiagnostics();
+  const content = [
+    `{bold}Cookie{/bold}: ${d.cookieCount}`,
+    `{bold}Login{/bold}: ${d.loginOk ? "OK" : "NG"}`,
+    `{bold}API count{/bold}: ${d.countOk ? "OK" : "NG"}`,
+    `{bold}API sales{/bold}: ${d.salesOk ? "OK" : "NG"}`,
+    `{bold}Library cache{/bold}: ${d.libraryCacheWorks} works`,
+    `{bold}Tree cache files{/bold}: ${d.treeCacheFiles}`,
+    "",
+    `{bold}Errors{/bold}:`,
+    ...(d.errors.length ? d.errors : ["none"]),
+  ].join("\n");
+  showOverlay("Diagnostics", content);
 }
 
 function clearThumbImage(): void {
@@ -459,6 +525,8 @@ screen.key(["c"], () => void (async () => {
   info("cookie saved");
 })().catch((e) => err(String(e))));
 screen.key(["i"], () => void client.importCookiesViaPlaywright().then(() => info("cookie imported via playwright")).catch((e) => err(String(e))));
+screen.key(["?"], () => showHelp());
+screen.key(["!"], () => void showDiagnostics().catch((e) => err(String(e))));
 screen.key(["s"], () => void doSearch().catch((e) => err(String(e))));
 screen.key(["l"], () => void doLibrary(true).catch((e) => err(String(e))));
 screen.key(["t"], () => void doLoadTree(true).catch((e) => err(String(e))));
@@ -568,6 +636,11 @@ screen.key(["]"], () => {
   else warn("未ログイン: c か i でCookie登録");
   library.focus();
   updateFocusDecor();
+  updateMiniPlayer();
   updateSelectionInfo();
+  setInterval(() => {
+    updateMiniPlayer();
+    screen.render();
+  }, 500);
   screen.render();
 })().catch((e) => err(String(e)));
