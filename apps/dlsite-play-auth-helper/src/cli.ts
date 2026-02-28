@@ -1,53 +1,47 @@
 #!/usr/bin/env node
-import readline from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
-import open from "open";
+import fs from "node:fs/promises";
+import path from "node:path";
+import os from "node:os";
+import { spawn } from "node:child_process";
 
-type CookieKV = { name: string; value: string };
-
-function parseCookieInput(raw: string): CookieKV[] {
-  const s = raw.trim();
-  if (!s) return [];
-
-  if (s.startsWith("[")) {
-    const arr = JSON.parse(s) as Array<{ name?: string; value?: string }>;
-    return arr
-      .filter((c) => typeof c?.name === "string" && typeof c?.value === "string")
-      .map((c) => ({ name: c.name!.trim(), value: c.value! }));
+async function exists(p: string): Promise<boolean> {
+  try {
+    await fs.access(p);
+    return true;
+  } catch {
+    return false;
   }
+}
 
-  return s
-    .split(";")
-    .map((x) => x.trim())
-    .filter(Boolean)
-    .map((pair) => {
-      const i = pair.indexOf("=");
-      if (i <= 0) return null;
-      return { name: pair.slice(0, i).trim(), value: pair.slice(i + 1).trim() };
-    })
-    .filter((v): v is CookieKV => Boolean(v?.name) && Boolean(v?.value));
+async function waitForFile(file: string, timeoutMs: number): Promise<void> {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (await exists(file)) return;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error("NW.js helper timed out before writing cookies");
 }
 
 async function main(): Promise<void> {
-  const rl = readline.createInterface({ input, output });
+  const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "..");
+  const appDir = path.join(root, "nw-app");
+  const nwBin = path.join(root, "node_modules", ".bin", process.platform === "win32" ? "nw.cmd" : "nw");
 
-  output.write("DLsite Auth Helper\n");
-  output.write("ブラウザでログイン画面を開きます。\n");
-  await open("https://play.dlsite.com/library");
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "dlplay-auth-"));
+  const outPath = path.join(tmpDir, "cookies.json");
 
-  output.write("\nログイン後、Cookieを貼り付けてください。\n");
-  output.write("形式1: name=value; name2=value2\n");
-  output.write("形式2: [{\"name\":\"...\",\"value\":\"...\"}]\n\n");
+  const child = spawn(nwBin, [appDir, `--output=${outPath}`, "--target=https://play.dlsite.com/library"], {
+    stdio: "inherit",
+  });
 
-  const raw = await rl.question("cookie> ");
-  rl.close();
-
-  const cookies = parseCookieInput(raw);
-  if (cookies.length === 0) {
-    throw new Error("有効なcookieを解析できませんでした");
+  try {
+    await waitForFile(outPath, 5 * 60 * 1000);
+    const raw = await fs.readFile(outPath, "utf8");
+    process.stdout.write(raw);
+  } finally {
+    if (!child.killed) child.kill("SIGTERM");
+    await fs.rm(tmpDir, { recursive: true, force: true });
   }
-
-  process.stdout.write(JSON.stringify({ cookies }));
 }
 
 main().catch((e) => {

@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>DLsite Auth Helper</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 0; }
+      .top { padding: 12px; background:#111; color:#fff; }
+      .bar { display:flex; gap:8px; align-items:center; }
+      button { padding:8px 12px; }
+      #msg { font-size:12px; opacity:0.9; }
+      webview { width:100%; height: calc(100vh - 88px); }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <div class="bar">
+        <button id="open">Open DLsite Library</button>
+        <button id="export">ログイン後: Cookie書き出し</button>
+        <span id="msg">1) ログイン 2) Cookie書き出し を押すと完了</span>
+      </div>
+    </div>
+    <webview id="wv" partition="persist:dlplay" src="https://play.dlsite.com/library"></webview>
+
+    <script src="main.js"></script>
+  </body>
+</html>

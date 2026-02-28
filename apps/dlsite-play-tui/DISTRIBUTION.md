@@ -3,9 +3,9 @@
 このプロジェクトは以下の2コンポーネント分離で配布します。
 
 - `apps/dlsite-play-tui` : TUI本体（再生・検索・DL）
-- `apps/dlsite-play-auth-helper` : 認証ヘルパー（ブラウザ誘導 + Cookie入力）
+- `apps/dlsite-play-auth-helper` : 認証ヘルパー（NW.js UI）
 
-> 方針: TUI本体から Playwright 依存を外し、配布しやすくする。
+> 方針: TUI本体からブラウザ自動操作依存を外し、認証UIをNW.js側へ分離。
 
 ---
 
@@ -69,11 +69,11 @@ DLPLAY_AUTH_HELPER=/abs/path/to/dlplay-auth-helper npm run dev
 - 認証ヘルパーは別添付
 - 初回セットアップで `dlplay-auth-helper` のPATH登録だけ案内
 
-### B. 認証ヘルパーを NW.js 化（将来）
+### B. 認証ヘルパーは NW.js UI版（実装済み）
 
-- `dlsite-play-auth-helper` を NW.js UIに置換
-- CookieをJSONで stdout / 一時ファイル経由でTUIへ返却
-- TUI側は同じ `dlplay-auth-helper` 呼び出しのまま
+- `dlsite-play-auth-helper` は NW.js でログインUIを提供
+- `dlplay-auth-helper` 実行時にNW.jsを起動
+- 「Cookie書き出し」ボタンでJSONを一時ファイルへ保存し、CLIがstdoutでTUIへ返却
 
 ---
 

@@ -1,0 +1,14 @@
+{
+  "name": "dlsite-play-auth-helper-ui",
+  "main": "index.html",
+  "window": {
+    "title": "DLsite Auth Helper (NW.js)",
+    "width": 900,
+    "height": 720,
+    "position": "center"
+  },
+  "chromium-args": "--disable-web-security",
+  "node-remote": [
+    "<all_urls>"
+  ]
+}
