@@ -61,7 +61,6 @@ let playerVolume = 100;
 let currentPlayingPath: string | null = null;
 let currentStartSec = 0;
 let currentStartedAtMs = 0;
-let isRestartingPlayer = false;
 
 const client = new DlsiteClient(stateDir, downloadDir);
 
@@ -312,7 +311,7 @@ function folderOf(p: string): string {
 
 function clearQueue(stopCurrent = false): void {
   audioQueue.length = 0;
-  if (stopCurrent && player) player.kill("SIGTERM");
+  if (stopCurrent) killPlayer("SIGKILL");
   queueRefresh();
 }
 
@@ -365,6 +364,15 @@ function elapsedSec(): number {
   return currentStartSec + Math.max(0, (Date.now() - currentStartedAtMs) / 1000);
 }
 
+function killPlayer(signal: NodeJS.Signals = "SIGTERM"): void {
+  if (!player) return;
+  try {
+    player.kill(signal);
+  } catch {
+    // ignore
+  }
+}
+
 function spawnPlayer(pathToPlay: string, startSec: number): void {
   const args = ["-nodisp", "-autoexit", "-loglevel", "warning", "-volume", String(playerVolume), "-ss", String(Math.max(0, startSec)), pathToPlay];
   const proc = spawn("ffplay", args, { stdio: ["ignore", "ignore", "ignore"] });
@@ -375,23 +383,20 @@ function spawnPlayer(pathToPlay: string, startSec: number): void {
   currentStartedAtMs = Date.now();
 
   proc.on("exit", () => {
-    player = null;
-    playerPaused = false;
-    if (isRestartingPlayer) {
-      isRestartingPlayer = false;
-      return;
+    if (player === proc) {
+      player = null;
+      playerPaused = false;
+      currentPlayingPath = null;
+      currentStartSec = 0;
+      setStatus("再生終了");
+      void playNextFromQueue();
     }
-    currentPlayingPath = null;
-    currentStartSec = 0;
-    setStatus("再生終了");
-    void playNextFromQueue();
   });
 }
 
 function restartCurrentAt(sec: number): void {
-  if (!player || !currentPlayingPath) return;
-  isRestartingPlayer = true;
-  player.kill("SIGTERM");
+  if (!currentPlayingPath) return;
+  killPlayer("SIGKILL");
   spawnPlayer(currentPlayingPath, sec);
 }
 
@@ -514,7 +519,8 @@ screen.key(["tab"], () => {
 });
 
 screen.key(["q", "C-c"], async () => {
-  player?.kill("SIGTERM");
+  clearQueue(false);
+  killPlayer("SIGKILL");
   await client.close();
   process.exit(0);
 });
@@ -580,7 +586,7 @@ screen.key(["A"], () => {
   enqueueCurrent();
 });
 screen.key(["n"], () => {
-  if (player) player.kill("SIGTERM");
+  if (player) killPlayer("SIGKILL");
   else void playNextFromQueue();
 });
 
@@ -628,6 +634,19 @@ screen.key(["]"], () => {
   const sec = Math.max(0, elapsedSec() + 10);
   setStatus(`+10秒シーク (${sec.toFixed(1)}s)`);
   restartCurrentAt(sec);
+});
+
+const cleanup = () => {
+  killPlayer("SIGKILL");
+};
+process.on("exit", cleanup);
+process.on("SIGINT", () => {
+  cleanup();
+  process.exit(0);
+});
+process.on("SIGTERM", () => {
+  cleanup();
+  process.exit(0);
 });
 
 (async () => {
