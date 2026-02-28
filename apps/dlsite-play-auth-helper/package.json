@@ -1,0 +1,21 @@
+{
+  "name": "dlsite-play-auth-helper",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "dlplay-auth-helper": "dist/cli.js"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "open": "^10.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.8",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
