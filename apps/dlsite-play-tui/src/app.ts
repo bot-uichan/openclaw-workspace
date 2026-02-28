@@ -35,6 +35,8 @@ const tree = blessed.list({
   items: ["(load with t)"],
 });
 const thumb = blessed.box({ parent: screen, top: 1, left: "82%", width: "18%", height: "31%", border: "line", label: " Thumb ", tags: true, content: "(none)" });
+let thumbImage: blessed.Widgets.BoxElement | null = null;
+let thumbTmpPath: string | null = null;
 const queue = blessed.list({ parent: screen, top: "32%", left: "82%", width: "18%", height: "31%", border: "line", label: " Queue ", keys: true, vi: true, mouse: true, items: ["(empty)"] });
 const selectionInfo = blessed.box({ parent: screen, top: "63%", left: 0, width: "100%", height: 3, border: "line", tags: true, content: " {cyan-fg}Selection{/cyan-fg}: -" });
 const logs = blessed.log({ parent: screen, top: "66%", left: 0, width: "100%", height: "31%-2", border: "line", label: " Logs ", tags: true });
@@ -112,17 +114,67 @@ function prompt(label: string, initial = ""): Promise<string | null> {
   });
 }
 
+function clearThumbImage(): void {
+  if (thumbImage) {
+    try { thumbImage.destroy(); } catch {}
+    thumbImage = null;
+  }
+  if (thumbTmpPath) {
+    void execFileAsync("bash", ["-lc", `rm -f '${thumbTmpPath}'`]).catch(() => undefined);
+    thumbTmpPath = null;
+  }
+}
+
+async function tryRenderThumbWithBlessedImage(tmpPath: string): Promise<boolean> {
+  const imageCtor = (blessed as unknown as { image?: (opts: any) => blessed.Widgets.BoxElement }).image;
+  if (!imageCtor) return false;
+
+  try {
+    clearThumbImage();
+    thumb.setContent("");
+    thumbImage = imageCtor({
+      parent: thumb,
+      top: 0,
+      left: 0,
+      width: "100%-2",
+      height: "100%-2",
+      file: tmpPath,
+      shrink: true,
+      search: false,
+    });
+    return true;
+  } catch {
+    clearThumbImage();
+    return false;
+  }
+}
+
 async function renderThumb(row?: Row): Promise<void> {
   const u = row?.kind === "owned" ? (row.raw as OwnedWork).thumbnail : row?.raw.thumbnail;
   if (!u) {
+    clearThumbImage();
     thumb.setContent("(no thumbnail)");
     screen.render();
     return;
   }
+
   try {
-    const { stdout } = await execFileAsync("bash", ["-lc", `tmp=$(mktemp); curl -fsSL '${u}' -o "$tmp" && chafa "$tmp" --size=20x10 --symbols=block && rm -f "$tmp"`], { maxBuffer: 1024 * 1024 });
+    const { stdout: tmpPathRaw } = await execFileAsync("bash", ["-lc", `tmp=$(mktemp); curl -fsSL '${u}' -o "$tmp"; echo -n "$tmp"`]);
+    const tmpPath = tmpPathRaw.trim();
+    thumbTmpPath = tmpPath;
+
+    const usedBlessedImage = await tryRenderThumbWithBlessedImage(tmpPath);
+    if (usedBlessedImage) {
+      screen.render();
+      return;
+    }
+
+    const { stdout } = await execFileAsync("bash", ["-lc", `chafa '${tmpPath}' --size=20x10 --symbols=block; rm -f '${tmpPath}'`], { maxBuffer: 1024 * 1024 });
+    thumbTmpPath = null;
+    clearThumbImage();
     thumb.setContent(stdout);
   } catch {
+    clearThumbImage();
     thumb.setContent(`thumb url:\n${u}`);
   }
   screen.render();
