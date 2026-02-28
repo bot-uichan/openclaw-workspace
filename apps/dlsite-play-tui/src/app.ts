@@ -13,7 +13,7 @@ const stateDir = path.join(HOME, ".cache", "dlsite-play-tui");
 const downloadDir = path.join(HOME, "Downloads", "dlsite");
 
 const screen = blessed.screen({ smartCSR: true, title: "DLsite Play TUI", fullUnicode: true });
-const header = blessed.box({ parent: screen, top: 0, left: 0, width: "100%", height: 1, style: { fg: "black", bg: "cyan" }, content: " DLsite TUI | TAB:focus c:cookie i:pw s:search l:library ENTER:load/open a:queue A:queue-folder n:next d:download y:copy q:quit" });
+const header = blessed.box({ parent: screen, top: 0, left: 0, width: "100%", height: 1, style: { fg: "black", bg: "cyan" }, content: " DLsite TUI | TAB c i s l ENTER a A n d y | space:pause [ ]:seek -/=:vol q:quit" });
 
 const library = blessed.listtable({ parent: screen, top: 1, left: 0, width: "48%", height: "62%", border: "line", keys: true, vi: true, mouse: true, style: { header: { fg: "yellow", bold: true }, cell: { selected: { bg: "blue" } } }, data: [["Type", "Title", "ID"]] });
 const tree = blessed.list({
@@ -51,6 +51,8 @@ const expanded = new Set<string>();
 let treeWorkId: string | null = null;
 const audioQueue: QueueItem[] = [];
 let player: ChildProcess | null = null;
+let playerPaused = false;
+let playerVolume = 100;
 
 const client = new DlsiteClient(stateDir, downloadDir);
 
@@ -186,10 +188,12 @@ async function playNextFromQueue(): Promise<void> {
 
   try {
     const local = await client.fetchPlayableToCache(item.workId, item.entry);
-    const proc = spawn("ffplay", ["-nodisp", "-autoexit", "-loglevel", "warning", local], { stdio: "ignore" });
+    const proc = spawn("ffplay", ["-nodisp", "-autoexit", "-loglevel", "warning", "-volume", String(playerVolume), local], { stdio: ["pipe", "ignore", "ignore"] });
     player = proc;
+    playerPaused = false;
     proc.on("exit", () => {
       player = null;
+      playerPaused = false;
       setStatus("再生終了");
       void playNextFromQueue();
     });
@@ -293,7 +297,14 @@ screen.key(["tab"], () => {
   updateFocusDecor();
   updateSelectionInfo();
 });
+function sendPlayerKey(key: string, note: string): void {
+  if (!player?.stdin?.writable) return;
+  player.stdin.write(key);
+  setStatus(note);
+}
+
 screen.key(["q", "C-c"], async () => {
+  if (player?.stdin?.writable) player.stdin.end();
   player?.kill("SIGTERM");
   await client.close();
   process.exit(0);
@@ -358,6 +369,34 @@ screen.key(["A"], () => {
 screen.key(["n"], () => {
   if (player) player.kill("SIGTERM");
   else void playNextFromQueue();
+});
+
+screen.key(["space"], () => {
+  if (!player) return;
+  sendPlayerKey("p", playerPaused ? "再開" : "一時停止");
+  playerPaused = !playerPaused;
+});
+
+screen.key(["-"], () => {
+  if (!player) return;
+  playerVolume = Math.max(0, playerVolume - 5);
+  sendPlayerKey("9", `音量 ${playerVolume}%`);
+});
+
+screen.key(["="], () => {
+  if (!player) return;
+  playerVolume = Math.min(200, playerVolume + 5);
+  sendPlayerKey("0", `音量 ${playerVolume}%`);
+});
+
+screen.key(["["], () => {
+  if (!player) return;
+  sendPlayerKey("\u001b[D", "-10秒シーク");
+});
+
+screen.key(["]"], () => {
+  if (!player) return;
+  sendPlayerKey("\u001b[C", "+10秒シーク");
 });
 
 (async () => {
