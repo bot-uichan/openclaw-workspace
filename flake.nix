@@ -17,7 +17,7 @@
             ffmpeg
             python3
             pkg-config
-            opus
+            libopus
             gcc
             gnumake
             git
