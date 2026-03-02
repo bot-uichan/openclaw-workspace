@@ -48,6 +48,10 @@ If 30 minutes passed since last demo trade tick:
 2. Make a discretionary decision with **aggressive bias** (no fixed buy/sell rule): HOLD / BUY / SELL / SELL_ALL.
    - Prefer action over inactivity: avoid consecutive HOLD unless confidence is clearly low.
    - Prefer larger sizing than before when conviction exists (example: BUY 40-70%, SELL 40-100%).
+   - Execution policy (must check every tick):
+     - Quality over churn: avoid overtrading; if edge is weak, HOLD with explicit reason.
+     - Diversify candidates: compare BTC/ETH/SOL/DEX tokens each tick, avoid SOL-only bias.
+     - Let winners run / cut losers faster: scale out on strength, reduce quickly when thesis weakens.
 3. Execute trade with **required reason** log:
    - HOLD: `node scripts/demo-trade.js --action HOLD --reason "今回の判断理由"`
    - BUY (major): `node scripts/demo-trade.js --action BUY --symbol SOLUSDC --pct 50 --reason "今回の判断理由"`
