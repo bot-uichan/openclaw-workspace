@@ -35,6 +35,13 @@ If 90 minutes passed since last chat-blend check:
    - When you send a message, keep it within 20 characters
 5. Update `lastBlendCheck1422820165158047838` timestamp in memory
 
+## Friday Tokyo plan repo check (at most every 3 hours)
+If 3 hours passed since last Friday Tokyo plan check:
+1. Check GitHub repo `https://github.com/bot-uichan/friday-tokyo-plan-summary` for progress related to Friday Tokyo trip plan
+2. If there is meaningful new progress to add, create/update branch and open a PR with concise summary
+3. If no meaningful progress, do nothing
+4. Update `lastFridayTokyoPlanCheck` timestamp in `memory/heartbeat-state.json`
+
 ## Demo crypto trade (every 30 minutes)
 If 30 minutes passed since last demo trade tick:
 1. Market research is mandatory before deciding:
