@@ -43,8 +43,9 @@ If 30 minutes passed since last Friday Tokyo plan check:
    - If missing, do an initial backfill read (up to ~100 messages) and set baseline.
 3. Evaluate only newly fetched messages for meaningful planning progress (participants/time/place/decisions/TODO changes).
 4. If there is meaningful new progress to add, update repo `https://github.com/bot-uichan/friday-tokyo-plan-summary` in dashboard format and open/update PR with concise summary.
-5. Record latest checked message ID as `lastFridayTokyoPlanMessageId` in `memory/heartbeat-state.json`.
-6. Update `lastFridayTokyoPlanCheck` timestamp in `memory/heartbeat-state.json`.
+5. If a PR is newly created in this run, notify Discord channel `1422820165158047838` with the PR URL and a 1-2 line summary.
+6. Record latest checked message ID as `lastFridayTokyoPlanMessageId` in `memory/heartbeat-state.json`.
+7. Update `lastFridayTokyoPlanCheck` timestamp in `memory/heartbeat-state.json`.
 
 ## Demo crypto trade (every 30 minutes)
 If 30 minutes passed since last demo trade tick:
