@@ -1,5 +1,5 @@
 {
-  "usdc": 33.211195900379884,
+  "usdc": 33.21859007081467,
   "positions": {
     "SOLUSDC": {
       "qty": 0.017409883138273945,
@@ -12,7 +12,7 @@
       "openedAt": "2026-03-02T17:54:29.533Z"
     },
     "PUMP:H4phNbsqjV5rqk8u6FUACTLB6rNZRTAPGnBb8KXJpump": {
-      "qty": 148.4057971014494,
+      "qty": 59.36231884057976,
       "entryPrice": 0.00008832,
       "openedAt": "2026-03-02T17:58:18.595Z"
     },
@@ -906,11 +906,15 @@
     {
       "at": "2026-03-13T13:35:45.387Z",
       "totalUsdcValue": 1038.7727
+    },
+    {
+      "at": "2026-03-13T14:07:18.060Z",
+      "totalUsdcValue": 1046.1834
     }
   ],
-  "lastTradeAt": "2026-03-13T13:35:45.387Z",
+  "lastTradeAt": "2026-03-13T14:07:18.060Z",
   "createdAt": "2026-02-25T06:39:32.605Z",
-  "updatedAt": "2026-03-13T13:35:45.388Z",
+  "updatedAt": "2026-03-13T14:07:18.061Z",
   "decisionHistory": [
     {
       "at": "2026-02-25T06:47:10.987Z",
@@ -2231,6 +2235,12 @@
       "action": "BUY",
       "symbol": "ETHUSDC",
       "reason": "BTCは依然強いが、ETFフローとハック後の市場耐性を踏まえるとETHにも資金が戻っており、直近はETHのモメンタム追随余地がある。残USDCは少額だが、SOL/PUMPより流動性が高く、BTC一本足よりBTC+ETHの主力二本立ての方が取りやすい。ChromiumでBTC/ETH画面を開いて確認したうえで、残りUSDCの50%をETHへ追加する。"
+    },
+    {
+      "at": "2026-03-13T14:07:18.060Z",
+      "action": "SELL",
+      "symbol": "PUMP:H4phNbsqjV5rqk8u6FUACTLB6rNZRTAPGnBb8KXJpump",
+      "reason": "BTCとETHはETFフローと機関需要で主力の強さが続く一方、SOLは強含みでも優先度は一段下で、PUMPは依然として流動性とニュース品質が弱い。Tavilyでも市場全体はハック由来の不安を消化しつつ主力へ資金が寄っており、この局面でミームを持つ必要性が低い。ChromiumでBTC/ETH画面を開いて確認したうえで、最も尾部リスクの高いPUMPをさらに60%落として主力寄せを進める。"
     }
   ]
 }
