@@ -1,16 +1,16 @@
-import cv from '@techstark/opencv-js';
+type OpenCvModule = any;
 
-let cvReadyPromise: Promise<typeof cv> | undefined;
+let cvReadyPromise: Promise<OpenCvModule> | undefined;
 
 export function loadOpenCv() {
   if (!cvReadyPromise) {
-    cvReadyPromise = Promise.resolve(cv);
+    cvReadyPromise = import('@techstark/opencv-js').then((module) => module as unknown as OpenCvModule);
   }
   return cvReadyPromise;
 }
 
 export async function preprocessImageDataUrl(imageDataUrl: string): Promise<string> {
-  const cvInstance = await loadOpenCv();
+  const cv = await loadOpenCv();
   const image = await loadImage(imageDataUrl);
   const canvas = document.createElement('canvas');
   canvas.width = image.naturalWidth || image.width;
@@ -22,25 +22,25 @@ export async function preprocessImageDataUrl(imageDataUrl: string): Promise<stri
 
   context.drawImage(image, 0, 0);
 
-  const src = cvInstance.imread(canvas);
-  const gray = new cvInstance.Mat();
-  const blurred = new cvInstance.Mat();
-  const binary = new cvInstance.Mat();
+  const src = cv.imread(canvas);
+  const gray = new cv.Mat();
+  const blurred = new cv.Mat();
+  const binary = new cv.Mat();
 
   try {
-    cvInstance.cvtColor(src, gray, cvInstance.COLOR_RGBA2GRAY, 0);
-    cvInstance.GaussianBlur(gray, blurred, new cvInstance.Size(3, 3), 0, 0, cvInstance.BORDER_DEFAULT);
-    cvInstance.adaptiveThreshold(
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+    cv.GaussianBlur(gray, blurred, new cv.Size(3, 3), 0, 0, cv.BORDER_DEFAULT);
+    cv.adaptiveThreshold(
       blurred,
       binary,
       255,
-      cvInstance.ADAPTIVE_THRESH_GAUSSIAN_C,
-      cvInstance.THRESH_BINARY,
+      cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+      cv.THRESH_BINARY,
       31,
       12,
     );
 
-    cvInstance.imshow(canvas, binary);
+    cv.imshow(canvas, binary);
     return canvas.toDataURL('image/png');
   } finally {
     src.delete();
