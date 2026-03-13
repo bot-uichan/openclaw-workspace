@@ -13,7 +13,7 @@ export function ResultPanel({ status, progress, summary }: ResultPanelProps) {
   return (
     <section className="panel">
       <div className="panel-header">
-        <h2>2. 認識結果</h2>
+        <h2>3. 認識結果</h2>
         <p>正規化とルールベース抽出を通した結果です。</p>
       </div>
 

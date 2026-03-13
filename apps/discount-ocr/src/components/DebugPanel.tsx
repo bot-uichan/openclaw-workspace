@@ -10,7 +10,7 @@ export function DebugPanel({ ocrResult, summary, error }: DebugPanelProps) {
   return (
     <section className="panel">
       <div className="panel-header">
-        <h2>3. Debug</h2>
+        <h2>4. Debug</h2>
         <p>PoC段階ではここが本体です。何を読んで、どう解釈したかを全部見ます。</p>
       </div>
 

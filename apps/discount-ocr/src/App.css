@@ -20,6 +20,10 @@ input {
   font: inherit;
 }
 
+video {
+  display: block;
+}
+
 pre {
   margin: 0;
   white-space: pre-wrap;
@@ -73,17 +77,28 @@ pre {
   margin-bottom: 20px;
 }
 
-.primary-button {
+.primary-button,
+.secondary-button {
   border: 0;
   border-radius: 999px;
   padding: 14px 20px;
-  background: linear-gradient(135deg, #5eead4, #60a5fa);
-  color: #08111f;
   font-weight: 700;
   cursor: pointer;
 }
 
-.primary-button:disabled {
+.primary-button {
+  background: linear-gradient(135deg, #5eead4, #60a5fa);
+  color: #08111f;
+}
+
+.secondary-button {
+  background: rgba(148, 163, 184, 0.18);
+  color: #e5eefb;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -141,7 +156,8 @@ pre {
 }
 
 .preview-wrapper,
-.preview-placeholder {
+.preview-placeholder,
+.camera-frame {
   margin-top: 16px;
   border-radius: 16px;
   overflow: hidden;
@@ -151,11 +167,55 @@ pre {
   place-items: center;
 }
 
-.preview-image {
+.camera-frame {
+  position: relative;
+}
+
+.preview-image,
+.camera-video {
   display: block;
   width: 100%;
   max-height: 480px;
   object-fit: contain;
+}
+
+.camera-video {
+  min-height: 260px;
+  background: #020617;
+}
+
+.camera-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #94a3b8;
+  background: rgba(2, 6, 23, 0.4);
+}
+
+.camera-roi {
+  pointer-events: none;
+  position: absolute;
+  inset: 18% 14%;
+  border: 2px dashed rgba(94, 234, 212, 0.8);
+  border-radius: 18px;
+  display: grid;
+  place-items: start center;
+}
+
+.camera-roi span {
+  margin-top: -12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #5eead4;
+  font-size: 0.85rem;
+}
+
+.camera-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
 }
 
 .status-box,
@@ -228,7 +288,12 @@ pre {
     justify-content: stretch;
   }
 
-  .primary-button {
+  .camera-actions {
+    flex-direction: column;
+  }
+
+  .primary-button,
+  .secondary-button {
     width: 100%;
   }
 }
