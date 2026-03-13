@@ -1,5 +1,5 @@
 {
-  "usdc": 8.304647517703668,
+  "usdc": 8.307641871790624,
   "positions": {
     "SOLUSDC": {
       "qty": 0.017409883138273945,
@@ -12,7 +12,7 @@
       "openedAt": "2026-03-02T17:54:29.533Z"
     },
     "PUMP:H4phNbsqjV5rqk8u6FUACTLB6rNZRTAPGnBb8KXJpump": {
-      "qty": 59.36231884057976,
+      "qty": 23.744927536231906,
       "entryPrice": 0.00008832,
       "openedAt": "2026-03-02T17:58:18.595Z"
     },
@@ -918,11 +918,15 @@
     {
       "at": "2026-03-13T15:10:19.827Z",
       "totalUsdcValue": 1034.1676
+    },
+    {
+      "at": "2026-03-13T15:41:29.660Z",
+      "totalUsdcValue": 1028.2979
     }
   ],
-  "lastTradeAt": "2026-03-13T15:10:19.827Z",
+  "lastTradeAt": "2026-03-13T15:41:29.660Z",
   "createdAt": "2026-02-25T06:39:32.605Z",
-  "updatedAt": "2026-03-13T15:10:19.828Z",
+  "updatedAt": "2026-03-13T15:41:29.661Z",
   "decisionHistory": [
     {
       "at": "2026-02-25T06:47:10.987Z",
@@ -2261,6 +2265,12 @@
       "action": "BUY",
       "symbol": "ETHUSDC",
       "reason": "BTCは依然主導だが、残キャッシュは少額で、これ以上BTCへ偏らせるよりETHへ回した方が主力二本立てのバランスが良い。TavilyではETHもETFフローと相対強度が維持され、ハック・規制ノイズは市場全体で消化継続。ChromiumでBTC/ETH画面を開いて確認したうえで、残USDCの50%をETHへ追加して主力分散を仕上げる。"
+    },
+    {
+      "at": "2026-03-13T15:41:29.660Z",
+      "action": "SELL",
+      "symbol": "PUMP:H4phNbsqjV5rqk8u6FUACTLB6rNZRTAPGnBb8KXJpump",
+      "reason": "BTCのETF流入と機関需要はなお強く、ETHもETFフローと相対強度を維持している一方、SOLは建玉調整局面、PUMPは流動性とニュース品質の弱さが残る。Tavilyでも規制・セキュリティ由来の慎重ムードは継続しており、こういう地合いでは最も尾部リスクの高いミーム枠を減らすのが素直。ChromiumでBTC/ETH画面を開いて確認したうえで、PUMPをさらに60%圧縮して主力寄せを進める。"
     }
   ]
 }
