@@ -1,5 +1,5 @@
 {
-  "usdc": 66.42239180075977,
+  "usdc": 33.211195900379884,
   "positions": {
     "SOLUSDC": {
       "qty": 0.017409883138273945,
@@ -7,8 +7,8 @@
       "openedAt": "2026-03-01T03:36:16.945Z"
     },
     "ETHUSDC": {
-      "qty": 0.07755112731342191,
-      "entryPrice": 2101.805740276249,
+      "qty": 0.09280451265323722,
+      "entryPrice": 2114.2140057968404,
       "openedAt": "2026-03-02T17:54:29.533Z"
     },
     "PUMP:H4phNbsqjV5rqk8u6FUACTLB6rNZRTAPGnBb8KXJpump": {
@@ -902,11 +902,15 @@
     {
       "at": "2026-03-13T13:04:27.098Z",
       "totalUsdcValue": 1034.343
+    },
+    {
+      "at": "2026-03-13T13:35:45.387Z",
+      "totalUsdcValue": 1038.7727
     }
   ],
-  "lastTradeAt": "2026-03-13T13:04:27.098Z",
+  "lastTradeAt": "2026-03-13T13:35:45.387Z",
   "createdAt": "2026-02-25T06:39:32.605Z",
-  "updatedAt": "2026-03-13T13:04:27.099Z",
+  "updatedAt": "2026-03-13T13:35:45.388Z",
   "decisionHistory": [
     {
       "at": "2026-02-25T06:47:10.987Z",
@@ -2221,6 +2225,12 @@
       "action": "BUY",
       "symbol": "BTCUSDC",
       "reason": "BTCはETF流入継続と機関需要の強さで主導が明確。ETHも強いが、直近の調査ではBTCのフローとモメンタムが一段上で、市場全体はセキュリティ/規制ヘッドラインを消化しつつある。ChromiumでBTC/ETHの相場画面を確認したうえで、残りUSDCの50%をBTCに追加して勝ち筋へ寄せる。"
+    },
+    {
+      "at": "2026-03-13T13:35:45.387Z",
+      "action": "BUY",
+      "symbol": "ETHUSDC",
+      "reason": "BTCは依然強いが、ETFフローとハック後の市場耐性を踏まえるとETHにも資金が戻っており、直近はETHのモメンタム追随余地がある。残USDCは少額だが、SOL/PUMPより流動性が高く、BTC一本足よりBTC+ETHの主力二本立ての方が取りやすい。ChromiumでBTC/ETH画面を開いて確認したうえで、残りUSDCの50%をETHへ追加する。"
     }
   ]
 }
