@@ -3,23 +3,28 @@ import './App.css';
 import { CameraPanel } from './components/CameraPanel';
 import { DebugPanel } from './components/DebugPanel';
 import { ImageUploadPanel } from './components/ImageUploadPanel';
+import { PreprocessPanel } from './components/PreprocessPanel';
 import { ResultPanel } from './components/ResultPanel';
 import { useCamera } from './hooks/useCamera';
 import { useOcrLoop } from './hooks/useOcrLoop';
 import { useStableDetection } from './hooks/useStableDetection';
 import { recognizeImage } from './lib/ocr/recognizeImage';
 import { buildDetectionSummary } from './lib/parser/pairDetection';
+import { preprocessImageDataUrl } from './lib/preprocess/opencv';
 import type { DetectionSummary, OcrResult } from './types/ocr';
 
 export default function App() {
   const [imageFile, setImageFile] = useState<File>();
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string>();
+  const [processedPreviewUrl, setProcessedPreviewUrl] = useState<string>();
   const [ocrResult, setOcrResult] = useState<OcrResult>();
   const [latestSummary, setLatestSummary] = useState<DetectionSummary>();
   const [status, setStatus] = useState('画像を選ぶかカメラを起動してください');
   const [error, setError] = useState<string>();
   const [progress, setProgress] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
+  const [usePreprocess, setUsePreprocess] = useState(true);
+  const [isPreprocessLoading, setIsPreprocessLoading] = useState(false);
   const { videoRef, isActive, isStarting, error: cameraError, startCamera, stopCamera } = useCamera();
   const { stableSummary, stability, pushSummary, reset } = useStableDetection();
 
@@ -37,20 +42,30 @@ export default function App() {
     () => [
       '対応予定: 10% / 30%OFF / 1割引 / 半額',
       '静止画PoC + カメラ手動キャプチャ + 定期OCRループ',
-      '次フェーズでOpenCV.js前処理を追加',
+      'OpenCV.js 前処理を切替可能',
     ],
     [],
   );
 
   const runOcrFromDataUrl = useCallback(
-    async (imageDataUrl: string, sourceLabel = 'OCR') => {
+    async (sourceImageDataUrl: string, sourceLabel = 'OCR') => {
       setIsRunning(true);
       setError(undefined);
       setProgress(0);
       setStatus(`${sourceLabel} 準備中…`);
 
       try {
-        const nextOcrResult = await recognizeImage(imageDataUrl, (nextProgress) => {
+        let targetImageDataUrl = sourceImageDataUrl;
+        if (usePreprocess) {
+          setIsPreprocessLoading(true);
+          setStatus(`${sourceLabel} 前処理中…`);
+          targetImageDataUrl = await preprocessImageDataUrl(sourceImageDataUrl);
+          setProcessedPreviewUrl(targetImageDataUrl);
+        } else {
+          setProcessedPreviewUrl(undefined);
+        }
+
+        const nextOcrResult = await recognizeImage(targetImageDataUrl, (nextProgress) => {
           setProgress(nextProgress);
           setStatus(`${sourceLabel} 実行中… ${Math.round(nextProgress * 100)}%`);
         });
@@ -66,9 +81,10 @@ export default function App() {
         setError(nextError instanceof Error ? nextError.message : 'Unknown error');
       } finally {
         setIsRunning(false);
+        setIsPreprocessLoading(false);
       }
     },
-    [pushSummary, stability],
+    [pushSummary, stability, usePreprocess],
   );
 
   async function handleRunOcr() {
@@ -110,7 +126,7 @@ export default function App() {
           <p className="eyebrow">Discount OCR PoC</p>
           <h1>値札 + 割引認識アプリ</h1>
           <p className="hero-copy">
-            Tesseract.js を Web Worker で回し、OCR後に価格と割引率を正規化して割引後価格を出す PoC です。
+            Tesseract.js を Web Worker で回し、OCR前に OpenCV.js で前処理を挟める PoC です。
           </p>
         </div>
         <ul className="hero-hints">
@@ -140,6 +156,12 @@ export default function App() {
           onCapture={handleCaptureFromCamera}
           onToggleLoop={toggleLoop}
           canCapture={canCapture}
+        />
+        <PreprocessPanel
+          enabled={usePreprocess}
+          isLoading={isPreprocessLoading}
+          processedPreviewUrl={processedPreviewUrl}
+          onToggle={() => setUsePreprocess((current) => !current)}
         />
         <ResultPanel status={status} progress={progress} stability={stability} summary={stableSummary ?? latestSummary} />
         <DebugPanel ocrResult={ocrResult} summary={latestSummary} error={error} />

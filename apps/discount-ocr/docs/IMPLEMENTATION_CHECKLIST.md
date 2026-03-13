@@ -40,8 +40,8 @@ Build a React web app that recognizes a product price and discount text from an 
 - [x] Preserve latest stable result
 
 ## Phase 5 — Accuracy / UX improvements
-- [ ] Add OpenCV.js preprocessing
-- [ ] Compare raw vs preprocessed OCR result
+- [x] Add OpenCV.js preprocessing
+- [x] Compare raw vs preprocessed OCR result
 - [ ] Add temporal smoothing / voting
 - [ ] Improve candidate scoring using bounding boxes
 - [ ] Add failure-state UX
