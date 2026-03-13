@@ -1,5 +1,5 @@
 {
-  "usdc": 4.153820935895312,
+  "usdc": 4.154963256869225,
   "positions": {
     "SOLUSDC": {
       "qty": 0.017409883138273945,
@@ -12,7 +12,7 @@
       "openedAt": "2026-03-02T17:54:29.533Z"
     },
     "PUMP:H4phNbsqjV5rqk8u6FUACTLB6rNZRTAPGnBb8KXJpump": {
-      "qty": 23.744927536231906,
+      "qty": 9.497971014492762,
       "entryPrice": 0.00008832,
       "openedAt": "2026-03-02T17:58:18.595Z"
     },
@@ -958,11 +958,19 @@
     {
       "at": "2026-03-13T20:53:10.429Z",
       "totalUsdcValue": 1015.6893
+    },
+    {
+      "at": "2026-03-13T21:19:41.483Z",
+      "totalUsdcValue": 1015.2462
+    },
+    {
+      "at": "2026-03-13T21:49:25.612Z",
+      "totalUsdcValue": 1011.9101
     }
   ],
-  "lastTradeAt": "2026-03-13T16:12:59.630Z",
+  "lastTradeAt": "2026-03-13T21:19:41.483Z",
   "createdAt": "2026-02-25T06:39:32.605Z",
-  "updatedAt": "2026-03-13T20:53:10.430Z",
+  "updatedAt": "2026-03-13T21:49:25.614Z",
   "decisionHistory": [
     {
       "at": "2026-02-25T06:47:10.987Z",
@@ -2361,6 +2369,18 @@
       "action": "HOLD",
       "symbol": null,
       "reason": "BTCはETF流入と機関需要の強さが続き、ETHも強いフローを維持している。一方で残キャッシュは4.15 USDCしかなく、ここでさらに小口回転しても期待値よりノイズが勝ちやすい。SOLは清算と資金調達の弱さが続き優先度が低く、規制/セキュリティ材料も既知の範囲。ChromiumでBTC/ETHの市場画面を開いて確認したうえで、今回は主力保有継続を優先してHOLDする。"
+    },
+    {
+      "at": "2026-03-13T21:19:41.483Z",
+      "action": "SELL",
+      "symbol": "PUMP:H4phNbsqjV5rqk8u6FUACTLB6rNZRTAPGnBb8KXJpump",
+      "reason": "BTC/ETHはETFフローで底堅い一方、SOLはfunding/OIが弱くアルト全体は選別色。Chromiumで市場画面を確認し、最も流動性事故リスクが高いPUMP残玉をさらに60%圧縮して主力へ寄せる。"
+    },
+    {
+      "at": "2026-03-13T21:49:25.612Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "BTCはETF流入が約2.5億ドル規模で続き、ETHも本日プラス流入を維持している一方、SOLはfundingと建玉が弱く相対優位が低い。規制・セキュリティの不安は残るが市場は概ね吸収しており、主力のBTC/ETH優位は継続。ChromiumでBTC/ETH画面を開いて確認したうえで、残キャッシュは4.15 USDCしかないため、ここでさらに小口回転せず主力保有を維持するHOLDを選ぶ。"
     }
   ]
 }
