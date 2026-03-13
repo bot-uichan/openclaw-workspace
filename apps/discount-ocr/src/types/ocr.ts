@@ -47,3 +47,5 @@ export type DetectionSummary = {
   selectedDiscount?: DiscountCandidate;
   discountedPrice?: number;
 };
+
+export type DetectionStability = 'reading' | 'candidate' | 'confirmed';

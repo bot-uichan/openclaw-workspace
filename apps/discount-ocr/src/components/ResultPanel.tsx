@@ -1,12 +1,13 @@
-import type { DetectionSummary } from '../types/ocr';
+import type { DetectionStability, DetectionSummary } from '../types/ocr';
 
 type ResultPanelProps = {
   status: string;
   progress: number;
+  stability: DetectionStability;
   summary?: DetectionSummary;
 };
 
-export function ResultPanel({ status, progress, summary }: ResultPanelProps) {
+export function ResultPanel({ status, progress, stability, summary }: ResultPanelProps) {
   const selectedPrice = summary?.selectedPrice;
   const selectedDiscount = summary?.selectedDiscount;
 
@@ -19,6 +20,7 @@ export function ResultPanel({ status, progress, summary }: ResultPanelProps) {
 
       <div className="status-box">
         <strong>Status:</strong> {status}
+        <span className={`inline-stability is-${stability}`}>{stability}</span>
         <div className="progress-bar">
           <div className="progress-bar-fill" style={{ width: `${Math.round(progress * 100)}%` }} />
         </div>

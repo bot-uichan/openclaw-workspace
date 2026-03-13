@@ -35,9 +35,9 @@ Build a React web app that recognizes a product price and discount text from an 
 ## Phase 4 — Camera loop
 - [x] Add camera permission + preview
 - [x] Add manual frame capture from camera
-- [ ] Add periodic OCR loop with skip-when-busy behavior
-- [ ] Add ROI overlay
-- [ ] Preserve latest stable result
+- [x] Add periodic OCR loop with skip-when-busy behavior
+- [x] Add ROI overlay
+- [x] Preserve latest stable result
 
 ## Phase 5 — Accuracy / UX improvements
 - [ ] Add OpenCV.js preprocessing

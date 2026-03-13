@@ -214,8 +214,45 @@ pre {
 
 .camera-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 16px;
+}
+
+.stability-badge,
+.inline-stability {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.stability-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(15, 23, 42, 0.82);
+}
+
+.inline-stability {
+  margin-left: 8px;
+  background: rgba(15, 23, 42, 0.82);
+}
+
+.is-reading {
+  color: #facc15;
+}
+
+.is-candidate {
+  color: #60a5fa;
+}
+
+.is-confirmed {
+  color: #4ade80;
 }
 
 .status-box,

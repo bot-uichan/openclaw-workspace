@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import './App.css';
 import { CameraPanel } from './components/CameraPanel';
 import { DebugPanel } from './components/DebugPanel';
 import { ImageUploadPanel } from './components/ImageUploadPanel';
 import { ResultPanel } from './components/ResultPanel';
 import { useCamera } from './hooks/useCamera';
+import { useOcrLoop } from './hooks/useOcrLoop';
+import { useStableDetection } from './hooks/useStableDetection';
 import { recognizeImage } from './lib/ocr/recognizeImage';
 import { buildDetectionSummary } from './lib/parser/pairDetection';
 import type { DetectionSummary, OcrResult } from './types/ocr';
@@ -13,12 +15,13 @@ export default function App() {
   const [imageFile, setImageFile] = useState<File>();
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string>();
   const [ocrResult, setOcrResult] = useState<OcrResult>();
-  const [summary, setSummary] = useState<DetectionSummary>();
+  const [latestSummary, setLatestSummary] = useState<DetectionSummary>();
   const [status, setStatus] = useState('画像を選ぶかカメラを起動してください');
   const [error, setError] = useState<string>();
   const [progress, setProgress] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const { videoRef, isActive, isStarting, error: cameraError, startCamera, stopCamera } = useCamera();
+  const { stableSummary, stability, pushSummary, reset } = useStableDetection();
 
   useEffect(() => {
     if (!imageFile) return undefined;
@@ -33,48 +36,71 @@ export default function App() {
   const selectedHints = useMemo(
     () => [
       '対応予定: 10% / 30%OFF / 1割引 / 半額',
-      '静止画PoCに加えてカメラ手動キャプチャを追加',
-      '次フェーズで定期OCRループとOpenCV.jsを追加',
+      '静止画PoC + カメラ手動キャプチャ + 定期OCRループ',
+      '次フェーズでOpenCV.js前処理を追加',
     ],
     [],
   );
 
-  async function runOcrFromDataUrl(imageDataUrl: string) {
-    setIsRunning(true);
-    setError(undefined);
-    setProgress(0);
-    setStatus('OCR準備中…');
+  const runOcrFromDataUrl = useCallback(
+    async (imageDataUrl: string, sourceLabel = 'OCR') => {
+      setIsRunning(true);
+      setError(undefined);
+      setProgress(0);
+      setStatus(`${sourceLabel} 準備中…`);
 
-    try {
-      const nextOcrResult = await recognizeImage(imageDataUrl, (nextProgress) => {
-        setProgress(nextProgress);
-        setStatus(`OCR実行中… ${Math.round(nextProgress * 100)}%`);
-      });
+      try {
+        const nextOcrResult = await recognizeImage(imageDataUrl, (nextProgress) => {
+          setProgress(nextProgress);
+          setStatus(`${sourceLabel} 実行中… ${Math.round(nextProgress * 100)}%`);
+        });
 
-      const nextSummary = buildDetectionSummary(nextOcrResult.text);
-      setOcrResult(nextOcrResult);
-      setSummary(nextSummary);
-      setProgress(1);
-      setStatus('解析完了');
-    } catch (nextError) {
-      setStatus('OCR失敗');
-      setError(nextError instanceof Error ? nextError.message : 'Unknown error');
-    } finally {
-      setIsRunning(false);
-    }
-  }
+        const nextSummary = buildDetectionSummary(nextOcrResult.text);
+        setOcrResult(nextOcrResult);
+        setLatestSummary(nextSummary);
+        pushSummary(nextSummary);
+        setProgress(1);
+        setStatus(stability === 'confirmed' ? '解析完了 / confirmed' : '解析完了');
+      } catch (nextError) {
+        setStatus(`${sourceLabel} 失敗`);
+        setError(nextError instanceof Error ? nextError.message : 'Unknown error');
+      } finally {
+        setIsRunning(false);
+      }
+    },
+    [pushSummary, stability],
+  );
 
   async function handleRunOcr() {
     if (!imageFile || isRunning) return;
+    reset();
     const imageDataUrl = await fileToDataUrl(imageFile);
-    await runOcrFromDataUrl(imageDataUrl);
+    await runOcrFromDataUrl(imageDataUrl, '画像OCR');
   }
 
-  async function handleCaptureFromCamera() {
+  const handleCaptureFromCamera = useCallback(async () => {
     if (!videoRef.current || isRunning) return;
     const imageDataUrl = captureVideoFrame(videoRef.current);
     setImagePreviewUrl(imageDataUrl);
-    await runOcrFromDataUrl(imageDataUrl);
+    await runOcrFromDataUrl(imageDataUrl, 'カメラOCR');
+  }, [isRunning, runOcrFromDataUrl, videoRef]);
+
+  const { isLoopActive, toggleLoop, stopLoop } = useOcrLoop({
+    enabled: isActive,
+    busy: isRunning,
+    intervalMs: 1500,
+    onTick: handleCaptureFromCamera,
+  });
+
+  useEffect(() => {
+    if (!isActive && isLoopActive) {
+      stopLoop();
+    }
+  }, [isActive, isLoopActive, stopLoop]);
+
+  function handleStopCamera() {
+    stopLoop();
+    stopCamera();
   }
 
   return (
@@ -106,14 +132,17 @@ export default function App() {
           ref={videoRef}
           isActive={isActive}
           isStarting={isStarting}
+          isLoopActive={isLoopActive}
+          stability={stability}
           error={cameraError}
           onStart={startCamera}
-          onStop={stopCamera}
+          onStop={handleStopCamera}
           onCapture={handleCaptureFromCamera}
+          onToggleLoop={toggleLoop}
           canCapture={canCapture}
         />
-        <ResultPanel status={status} progress={progress} summary={summary} />
-        <DebugPanel ocrResult={ocrResult} summary={summary} error={error} />
+        <ResultPanel status={status} progress={progress} stability={stability} summary={stableSummary ?? latestSummary} />
+        <DebugPanel ocrResult={ocrResult} summary={latestSummary} error={error} />
       </div>
     </main>
   );
