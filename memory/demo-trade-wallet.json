@@ -1082,11 +1082,15 @@
     {
       "at": "2026-03-14T16:32:22.873Z",
       "totalUsdcValue": 1003.1789
+    },
+    {
+      "at": "2026-03-14T17:01:51.951Z",
+      "totalUsdcValue": 1003.5794
     }
   ],
   "lastTradeAt": "2026-03-13T21:19:41.483Z",
   "createdAt": "2026-02-25T06:39:32.605Z",
-  "updatedAt": "2026-03-14T16:32:22.874Z",
+  "updatedAt": "2026-03-14T17:01:51.952Z",
   "decisionHistory": [
     {
       "at": "2026-02-25T06:47:10.987Z",
@@ -2671,6 +2675,12 @@
       "action": "HOLD",
       "symbol": null,
       "reason": "BTCはTradingViewで約70676ドル・24時間-1.33%まで軟化、ETHは約2076ドル・-2.26%で弱含み。TavilyではBTCは3月ETF流入が続いて中期の受け皿はある一方、ETHはETF流入が細く、SOLも建玉50億ドル級でfunding/OI由来のノイズが強い。市場全体が調整色で、残キャッシュは4.15 USDCしかなく追加回転の妙味が薄いため、今回は主力保有を維持してHOLD。"
+    },
+    {
+      "at": "2026-03-14T17:01:51.951Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "BTCは約70699ドルで24時間-1.7%だが、Tavilyでは3月ETF流入が約7億ドル規模で中期の受け皿が継続。ETHは約2078ドルで-2.7%、ETF流入とstaked ETF材料はある一方で価格反応はまだ重い。SOLは価格86ドル前後でもopen interest約50億ドル・funding安定でレバ主導のノイズが残る。ChromiumのTradingView市場画面も確認したが、残キャッシュは4.15 USDCしかなく追加回転の期待値が薄いため、主力保有を維持してHOLD。"
     }
   ]
 }
