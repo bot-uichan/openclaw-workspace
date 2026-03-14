@@ -1010,11 +1010,15 @@
     {
       "at": "2026-03-14T04:29:49.299Z",
       "totalUsdcValue": 1011.5982
+    },
+    {
+      "at": "2026-03-14T04:59:15.346Z",
+      "totalUsdcValue": 1008.9018
     }
   ],
   "lastTradeAt": "2026-03-13T21:19:41.483Z",
   "createdAt": "2026-02-25T06:39:32.605Z",
-  "updatedAt": "2026-03-14T04:29:49.300Z",
+  "updatedAt": "2026-03-14T04:59:15.347Z",
   "decisionHistory": [
     {
       "at": "2026-02-25T06:47:10.987Z",
@@ -2491,6 +2495,12 @@
       "action": "HOLD",
       "symbol": null,
       "reason": "BTCはETF流入継続で約71166ドル、ETHは約2104ドルで小幅軟調。TavilyではBTC資金流入優位・ETHはフロー弱め、SOLはfunding/OI高止まりでノイズ継続。ChromiumでTradingViewの市場画面も確認したが、残キャッシュは4.15 USDCしかなく追加回転の期待値が薄いため主力保有を維持してHOLD。"
+    },
+    {
+      "at": "2026-03-14T04:59:15.346Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "BTCはTradingViewで約71050ドル、ETHは約2091ドルまで軟化。TavilyではBTC ETFフローに短期流出ノイズがある一方で主力優位は維持、ETHはETF流入と価格圧力が綱引き、SOLはfunding/OI高止まりで乱高下しやすい。Chromiumで市場画面を確認したが、新規の強い優位性はなく残キャッシュも4.15 USDCしかないため、今回は主力保有を維持してHOLD。"
     }
   ]
 }
