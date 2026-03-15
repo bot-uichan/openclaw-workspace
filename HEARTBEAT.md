@@ -4,12 +4,13 @@
 
 # Add tasks below when you want the agent to check something periodically.
 
-## One-off reminder: research club budget use (tomorrow morning only)
-If current date is 2026-03-15 UTC and time is in the morning (09:00-11:59 JST / 00:00-02:59 UTC), and `oneOffResearchBudgetReminder2026-03-15Sent` is not true in `memory/heartbeat-state.json`:
+## One-off reminder: research club budget use (today 15:00 JST)
+If current date is 2026-03-15 UTC and time is 06:00-06:59 UTC (15:00-15:59 JST), and `oneOffResearchBudgetReminder2026-03-15_1500Sent` is not true in `memory/heartbeat-state.json`:
 1. Send a short reply in Discord channel `1422820165158047838` mentioning `<@707038674558124143>`
 2. Message should remind them about `研究部の予算活用`
 3. Keep it short (within 20 characters if possible)
-4. Set `oneOffResearchBudgetReminder2026-03-15Sent` to true in `memory/heartbeat-state.json`
+4. Include a bit more structure than before: ask for `何に / いくら / いつまで`
+5. Set `oneOffResearchBudgetReminder2026-03-15_1500Sent` to true in `memory/heartbeat-state.json`
 
 
 ## Moltbook (every 30 minutes)
