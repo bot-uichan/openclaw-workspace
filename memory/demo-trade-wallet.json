@@ -1,8 +1,8 @@
 {
-  "usdc": 11.493751492798825,
+  "usdc": 6.116872994719829,
   "positions": {
     "SOLUSDC": {
-      "qty": 0.006963953255309579,
+      "qty": 0.0027855813021238317,
       "entryPrice": 86.27327179689408,
       "openedAt": "2026-03-01T03:36:16.945Z"
     },
@@ -11,14 +11,9 @@
       "entryPrice": 2104.422523091325,
       "openedAt": "2026-03-02T17:54:29.533Z"
     },
-    "PUMP:H4phNbsqjV5rqk8u6FUACTLB6rNZRTAPGnBb8KXJpump": {
-      "qty": 9.497971014492762,
-      "entryPrice": 0.00008832,
-      "openedAt": "2026-03-02T17:58:18.595Z"
-    },
     "BTCUSDC": {
-      "qty": 0.013165753844728846,
-      "entryPrice": 70319.33882704108,
+      "qty": 0.013245798188978496,
+      "entryPrice": 70328.26319537536,
       "openedAt": "2026-03-03T08:40:43.300Z"
     }
   },
@@ -1178,11 +1173,23 @@
     {
       "at": "2026-03-15T10:27:09.995Z",
       "totalUsdcValue": 1019.3249
+    },
+    {
+      "at": "2026-03-15T10:59:06.174Z",
+      "totalUsdcValue": 1018.5255
+    },
+    {
+      "at": "2026-03-15T13:01:24.577Z",
+      "totalUsdcValue": 1016.7062
+    },
+    {
+      "at": "2026-03-15T13:33:33.069Z",
+      "totalUsdcValue": 1014.1085
     }
   ],
-  "lastTradeAt": "2026-03-15T10:27:09.995Z",
+  "lastTradeAt": "2026-03-15T13:33:33.069Z",
   "createdAt": "2026-02-25T06:39:32.605Z",
-  "updatedAt": "2026-03-15T10:27:10.107Z",
+  "updatedAt": "2026-03-15T13:33:33.138Z",
   "decisionHistory": [
     {
       "at": "2026-02-25T06:47:10.987Z",
@@ -2911,6 +2918,24 @@
       "action": "BUY",
       "symbol": "BTCUSDC",
       "reason": "TavilyではBTCは5日連続のETF純流入で約7.67億ドル規模、地政学リスク下でも7.1万ドル台を維持しており主導権が強い。ETHはOI急増で価格はついてきているがレバ由来の巻き戻し懸念が残り、SOLもOI約50億ドルでボラ先行。ChromiumでTradingView市場画面も確認し、残USDCは少額なので最も質の高いBTCへ50%再配分する。"
+    },
+    {
+      "at": "2026-03-15T10:59:06.174Z",
+      "action": "BUY",
+      "symbol": "BTCUSDC",
+      "reason": "BTCはETFフロー再加速観測が続き、TradingViewでも7.1万ドル台を維持して主導権が最も強い。ETHは価格こそ底堅いがOI急増でレバ主導の巻き戻し懸念が残り、SOLはfundingマイナスとOI約50億ドルで相対劣後。残USDCは少額なので、最も質の高いBTCへ50%寄せて主力集中を進める。"
+    },
+    {
+      "at": "2026-03-15T13:01:24.577Z",
+      "action": "SELL",
+      "symbol": "SOLUSDC",
+      "reason": "BTCはTradingViewで+1.19%かつETF資金流入が継続、ETHも+1.70%で主力が強い。一方SOLはTavilyで24h弱含み・OI約52億ドルとレバ主導ノイズが残り、相対劣後が続いている。残っているSOLは小さいが、弱い足をさらに削って主力集中を進める。"
+    },
+    {
+      "at": "2026-03-15T13:33:33.069Z",
+      "action": "SELL",
+      "symbol": "PUMP:H4phNbsqjV5rqk8u6FUACTLB6rNZRTAPGnBb8KXJpump",
+      "reason": "BTCはETF流入で地合いを支え、TradingViewでもBTC/ETHがともに+0.8%前後で主要銘柄優位。一方SOLは直近24hでロング清算が目立ち、ミーム資金はさらに弱くなりやすい。小額でもノイズ要因のPUMPを全処分して、資金をメジャー優位の局面に寄せる。"
     }
   ]
 }
