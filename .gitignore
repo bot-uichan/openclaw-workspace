@@ -4,6 +4,7 @@
 # --- secrets / config ---
 .env
 .env.*
+!.env.example
 *.key
 *.pem
 *.p12
