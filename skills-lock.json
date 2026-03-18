@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "matching-app": {
+      "source": "nakasyou/matching-app",
+      "sourceType": "github",
+      "computedHash": "1f60cbe344f06c7075f77f343d661a23b2721ed514cde0eafab2009b42b2f9c2"
+    },
+    "popopo-cli": {
+      "source": "evex-dev/popopo.js",
+      "sourceType": "github",
+      "computedHash": "53662b829f0f90868f74446e3d983d421e34249c3a4dc1aae6429a390904e8ba"
+    }
+  }
+}
