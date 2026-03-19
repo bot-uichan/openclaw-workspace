@@ -1659,11 +1659,15 @@
     {
       "at": "2026-03-19T04:27:28.932Z",
       "totalUsdcValue": 1007.5804
+    },
+    {
+      "at": "2026-03-19T04:56:36.409Z",
+      "totalUsdcValue": 1007.8933
     }
   ],
   "lastTradeAt": "2026-03-19T04:27:28.932Z",
   "createdAt": "2026-02-25T06:39:32.605Z",
-  "updatedAt": "2026-03-19T04:27:28.934Z",
+  "updatedAt": "2026-03-19T04:56:36.409Z",
   "decisionHistory": [
     {
       "at": "2026-02-25T06:47:10.987Z",
@@ -4136,6 +4140,12 @@
       "action": "SELL",
       "symbol": "BTCUSDC",
       "reason": "BTCはTradingViewで24h-4.81%・約70718ドルまで下落し、Fed据え置き後のインフレ警戒でリスクオフが強い。Web調査でも3月19日はFidelityの大口流出を含むETF減速とFear優勢が確認でき、ETH/SOLも建玉ノイズは大きいが現保有BTCの短期優位は弱い。キャッシュを厚くして次の反転余地を残すため、BTCを60%縮小する。"
+    },
+    {
+      "at": "2026-03-19T04:56:36.409Z",
+      "action": "HOLD",
+      "symbol": null,
+      "reason": "BTCはTradingViewで約70718ドル・24h-4.8%近辺まで下落し、FOMC後のインフレ警戒で地合いはまだリスクオフ寄り。Web調査でもBTCはETFフロー減速やFear優勢が続く一方、ETHは建玉とfundingが荒く、SOLもOI/fundingのノイズが強い。直前ティックでBTCを60%縮小して現金を厚くしており、ここでさらに追撃売買する優位性は弱いため今回はHOLDで様子を見る。"
     }
   ]
 }
